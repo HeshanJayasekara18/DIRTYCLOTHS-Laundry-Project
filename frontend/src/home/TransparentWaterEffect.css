@@ -1,0 +1,127 @@
+/* BubbleEffect.css */
+
+/* Main container for the bubble effect */
+.bubble-effect-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none; /* Only bubbles should be clickable */
+  z-index: 1000;
+}
+
+/* Soap bubble styling with glossy and realistic effect */
+.soap-bubble {
+  position: absolute;
+  background: radial-gradient(
+    circle at 35% 35%, 
+    rgba(255, 255, 255, 0.9) 0%, 
+    rgba(255, 255, 255, 0.8) 10%, 
+    rgba(255, 255, 255, 0.5) 30%,
+    rgba(200, 240, 255, 0.3) 60%,
+    rgba(200, 220, 255, 0.1) 90%
+  );
+  border-radius: 50%;
+  box-shadow: 
+    inset 0 0 20px rgba(255, 255, 255, 0.5),
+    inset 5px 5px 15px rgba(150, 230, 255, 0.3),
+    0 0 10px rgba(255, 255, 255, 0.3);
+  opacity: 0.8;
+  pointer-events: auto; /* Make bubbles clickable */
+  cursor: pointer;
+  transform-origin: center;
+  animation: float ease-in-out forwards;
+  transition: transform 30s ease, opacity 30s ease;
+}
+
+/* Rainbow reflection on some bubbles */
+.soap-bubble.rainbow {
+  background: radial-gradient(
+    circle at 35% 35%, 
+    rgba(255, 255, 255, 0.95) 0%, 
+    rgba(255, 255, 255, 0.8) 10%, 
+    rgba(255, 204, 255, 0.6) 20%,
+    rgba(204, 255, 255, 0.5) 35%,
+    rgba(204, 255, 204, 0.4) 50%,
+    rgba(255, 255, 204, 0.3) 65%,
+    rgba(255, 204, 204, 0.2) 80%,
+    rgba(200, 200, 255, 0.1) 90%
+  );
+}
+
+/* Hover effect for bubbles */
+.soap-bubble:hover {
+  opacity: 1;
+  transform: scale(1.5);
+}
+
+/* Explosion particle styling */
+.bubble-particle {
+  position: absolute;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.7) 30%,
+    rgba(255, 255, 255, 0) 80%
+  );
+  border-radius: 50%;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+/* Ripple effect when bubble pops */
+.bubble-ripple {
+  position: absolute;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: ripple 20s ease-out forwards;
+}
+
+/* Float animation for bubbles with wobble and drift */
+@keyframes float {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(0.5);
+    opacity: 0.1;
+  }
+  10% {
+    opacity: 0.8;
+    transform: translateY(-100px) translateX(calc(var(--drift-x, 0px) * 0.2)) rotate(5deg) scale(0.9);
+  }
+  30% {
+    transform: translateY(-300px) translateX(calc(var(--drift-x, 0px) * 0.4)) rotate(15deg) scale(1);
+  }
+  50% {
+    transform: translateY(-500px) translateX(calc(var(--drift-x, 0px) * 0.6)) rotate(5deg) scale(1.02);
+  }
+  70% {
+    transform: translateY(-700px) translateX(calc(var(--drift-x, 0px) * 0.8)) rotate(-10deg) scale(1);
+  }
+  90% {
+    opacity: 0.7;
+    transform: translateY(-900px) translateX(calc(var(--drift-x, 0px) * 1)) rotate(0deg) scale(0.98);
+  }
+  100% {
+    transform: translateY(-1000px) translateX(var(--drift-x, 0px)) rotate(10deg) scale(0.9);
+    opacity: 0;
+  }
+}
+
+/* Ripple animation when bubble pops */
+@keyframes ripple {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.8;
+    border-width: 5px;
+  }
+  100% {
+    width: 100px;
+    height: 100px;
+    opacity: 0;
+    border-width: 1px;
+  }
+}

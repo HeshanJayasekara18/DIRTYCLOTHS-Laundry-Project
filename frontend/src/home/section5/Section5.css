@@ -1,0 +1,21 @@
+/* Custom CSS file (e.g., styles.css) */
+.gifcontroller-section5 {
+  
+  
+  right: 70%;
+  transform: translate(8%, 6.7%);
+  z-index: 1;
+  
+  
+}
+
+.gifshape-section5 img {
+  
+  width: 400px;   /* Increased from 270px */
+  height: 500px;  /* Increased from 270px */
+  border-radius: 50px 50px 0px 0px;
+  border: 3px solid #1094ae;
+  object-fit: cover;
+  
+  
+}

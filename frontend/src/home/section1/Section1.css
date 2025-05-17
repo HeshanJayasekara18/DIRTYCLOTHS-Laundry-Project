@@ -1,0 +1,62 @@
+/* Add this to your CSS file */
+
+/* Text shadow for hero heading */
+.text-shadow-lg {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Animation for the laundry splash (if you want to add custom animation) */
+@keyframes splashAnimation {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.splash-animation {
+  animation: splashAnimation 3s infinite ease-in-out;
+}
+
+/* Optional: Add a gradient overlay for the button */
+.order-button-gradient {
+  background: linear-gradient(to right, #9deb61, #76c653);
+}
+
+/* Additional styling for section ID */
+#section1 {
+  scroll-margin-top: 80px; /* Accounts for sticky header if you have one */
+}
+
+/* Make sure the hero section spans the full viewport height on larger screens */
+@media (min-width: 768px) {
+  #section1 {
+    min-height: 90vh;
+  }
+}
+
+/* Custom CSS file (e.g., styles.css) */
+.gifcontroller {
+  
+  position: absolute;
+  left: 80%;
+  
+  z-index: 1;
+  
+  
+}
+
+.gifshape img {
+  background: linear-gradient(90deg, #000000 0%, #000000 100%);
+  width: 500px;   /* Increased from 270px */
+  height: 200px;  /* Increased from 270px */
+  border-radius: 50px 0px 0px 50px;
+  border: 3px solid #1094ae;
+  object-fit: cover;
+  
+  
+}
