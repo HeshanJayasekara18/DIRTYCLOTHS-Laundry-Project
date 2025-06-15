@@ -1,20 +1,26 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useLocation, Link } from "react-router-dom";
 import logo from '../../images/DIRTYCLOTHS.png';
+import UserProfile from '../../user_profile/UserProfile';
 
-// Navigation items - update these to match your needs
-const navigation = [
-  { name: 'Home', href: '/', current: true },
-  { name: 'Services', href: '/services', current: false },
-  { name: 'Orders', href: '/orders', current: false },
-  { name: 'About us', href: '/aboutus', current: false },
-  { name: 'Contact us', href: '/contactus', current: false },
+// Navigation items - defined outside component to avoid recreation on each render
+const navigationItems = [
+  { name: 'Home', href: '/' },
+  { name: 'Services', href: '/services' },
+  { name: 'Orders', href: '/orders' },
+  { name: 'About us', href: '/about' },
+  { name: 'Contact us', href: '/contactus' },
 ];
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-
+  
+  // Get current location from React Router
+  const location = useLocation();
+  const currentPath = location.pathname;
+  
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
@@ -47,20 +53,29 @@ export default function Navbar() {
           {/* Navigation section - hidden on mobile */}
           <div className="hidden md:flex md:items-center md:justify-center flex-grow">
             <div className="flex space-x-8">
-              {navigation.map((item) => (
-                <a
-                  key={item.name}
-                  href={item.href}
-                  className={`${
-                    item.current
-                      ? 'text-blue-600 border-b-2 border-blue-600 font-medium'
-                      : 'text-gray-800 hover:text-blue-500 hover:border-b-2 hover:border-blue-500'
-                  } px-1 py-2 text-base transition-colors duration-200`}
-                  aria-current={item.current ? 'page' : undefined}
-                >
-                  {item.name}
-                </a>
-              ))}
+              {navigationItems.map((item) => {
+                // Check if this item's path matches the current path
+                // For home page, check for exact match, otherwise check if path starts with item's href
+                const isCurrent = 
+                  item.href === '/' 
+                    ? currentPath === '/' 
+                    : currentPath.startsWith(item.href);
+                
+                return (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    className={`${
+                      isCurrent
+                        ? 'text-blue-600 border-b-2 border-blue-600 font-medium'
+                        : 'text-gray-800 hover:text-blue-500 hover:border-b-2 hover:border-blue-500'
+                    } px-1 py-2 text-base transition-colors duration-200`}
+                    aria-current={isCurrent ? 'page' : undefined}
+                  >
+                    {item.name}
+                  </a>
+                );
+              })}
             </div>
           </div>
           
@@ -77,13 +92,16 @@ export default function Navbar() {
                   alt="User profile"
                 />
               </button>
-              
               {/* Profile dropdown menu */}
               {profileDropdownOpen && (
                 <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
-                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200">
+                  <Link 
+                    to="/userprofile" 
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"
+                    onClick={() => setProfileDropdownOpen(false)} // Close dropdown when clicked
+                  >
                     Your Profile
-                  </a>
+                  </Link>
                   <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200">
                     Sign out
                   </a>
@@ -143,20 +161,28 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 shadow-lg">
           <div className="px-2 pt-2 pb-3 space-y-1">
-            {navigation.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                className={`${
-                  item.current
-                    ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-blue-500 hover:border-l-4 hover:border-blue-500'
-                } block px-3 py-3 rounded-md text-base font-medium transition-all duration-200`}
-                aria-current={item.current ? 'page' : undefined}
-              >
-                {item.name}
-              </a>
-            ))}
+            {navigationItems.map((item) => {
+              // Use the same current path logic for mobile menu
+              const isCurrent = 
+                item.href === '/' 
+                  ? currentPath === '/' 
+                  : currentPath.startsWith(item.href);
+              
+              return (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  className={`${
+                    isCurrent
+                      ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-blue-500 hover:border-l-4 hover:border-blue-500'
+                  } block px-3 py-3 rounded-md text-base font-medium transition-all duration-200`}
+                  aria-current={isCurrent ? 'page' : undefined}
+                >
+                  {item.name}
+                </a>
+              );
+            })}
           </div>
         </div>
       )}

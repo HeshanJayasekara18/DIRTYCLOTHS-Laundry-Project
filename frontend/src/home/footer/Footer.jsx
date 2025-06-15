@@ -3,7 +3,7 @@ import logo from '../../images/DIRTYCLOTHS.png';
 
 const Footer = () => {
   return (
-    <footer className="bg-yellow-50 px-6 py-8">
+    <footer className="bg-gray-100 px-6 py-8">
       <div className="max-w-7xl mx-auto">
         {/* Logo and Tagline */}
         <div className="mb-8">
