@@ -3,6 +3,7 @@ import { Plus, Edit3, Trash2, Package, DollarSign, Clock, Users, Search, Filter,
 
 const LaundryAdminPage = () => {
   const [packages, setPackages] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingPackage, setEditingPackage] = useState(null);
@@ -11,11 +12,28 @@ const LaundryAdminPage = () => {
 
   const API_BASE_URL = 'http://localhost:5000/api';
 
-  // Fetch packages from API
-  useEffect(() => {
-    fetchPackages();
-  }, []);
+  // Fetch orders from API
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await fetch(`${API_BASE_URL}/order`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Orders fetched:', data);
+        setOrders(data);
+      } else {
+        setError('Failed to fetch orders');
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      setError('Network error while fetching orders');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Fetch packages from API
   const fetchPackages = async () => {
     try {
       setLoading(true);
@@ -23,6 +41,7 @@ const LaundryAdminPage = () => {
       const response = await fetch(`${API_BASE_URL}/package`);
       if (response.ok) {
         const data = await response.json();
+        console.log('Packages fetched:', data);
         setPackages(data);
       } else {
         setError('Failed to fetch packages');
@@ -34,6 +53,21 @@ const LaundryAdminPage = () => {
       setLoading(false);
     }
   };
+
+  // Fetch data on component mount
+  useEffect(() => {
+    Promise.all([fetchPackages(), fetchOrders()])
+      .catch((error) => {
+        console.error('Error fetching data:', error);
+        setError('Failed to load data');
+      });
+  }, []);
+
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         order.order_id?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
 
   const filteredPackages = packages.filter(pkg => {
     const matchesSearch = pkg.package_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -127,7 +161,6 @@ const LaundryAdminPage = () => {
     }
   };
 
-  // Helper function to ensure features is always an array
   const normalizeFeatures = (features) => {
     if (Array.isArray(features)) {
       return features.length > 0 ? features : [''];
@@ -171,7 +204,6 @@ const LaundryAdminPage = () => {
     const handleSubmit = (e) => {
       if (e) e.preventDefault();
       
-      // Validation
       if (!formData.package_name.trim()) {
         setFormError('Package name is required');
         return;
@@ -327,7 +359,7 @@ const LaundryAdminPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Below 1 kg ($) *
+                    Below 1 kg (Rs.) *
                   </label>
                   <input
                     type="number"
@@ -345,7 +377,7 @@ const LaundryAdminPage = () => {
                 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    1-10 kg ($) *
+                    1-10 kg (Rs.) *
                   </label>
                   <input
                     type="number"
@@ -363,7 +395,7 @@ const LaundryAdminPage = () => {
                 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Above 10 kg ($) *
+                    Above 10 kg (Rs.) *
                   </label>
                   <input
                     type="number"
@@ -408,7 +440,7 @@ const LaundryAdminPage = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading packages...</p>
+          <p className="text-gray-600">Loading data...</p>
         </div>
       </div>
     );
@@ -421,7 +453,7 @@ const LaundryAdminPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Laundry Packages</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Laundry Admin Dashboard</h1>
               <p className="text-gray-600 mt-1">Manage your laundry service packages</p>
             </div>
             <button
@@ -477,13 +509,8 @@ const LaundryAdminPage = () => {
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Avg. Price (1-10kg)</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${packages.length > 0 ? 
-                    (packages.reduce((sum, p) => sum + (p.pricing?.between_1And10 || 0), 0) / packages.length).toFixed(2) : 
-                    '0.00'
-                  }
-                </p>
+                <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <DollarSign className="text-purple-600" size={24} />
@@ -520,7 +547,7 @@ const LaundryAdminPage = () => {
               />
             </div>
             <button
-              onClick={fetchPackages}
+              onClick={() => Promise.all([fetchPackages(), fetchOrders()])}
               className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
             >
               Refresh
@@ -569,15 +596,15 @@ const LaundryAdminPage = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Below 1kg:</span>
-                      <span className="font-medium">${pkg.pricing?.below_1 || 0}</span>
+                      <span className="font-medium">Rs. {pkg.pricing?.below_1 || 0}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">1-10kg:</span>
-                      <span className="font-medium">${pkg.pricing?.between_1And10 || 0}</span>
+                      <span className="font-medium">Rs. {pkg.pricing?.between_1And10 || 0}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Above 10kg:</span>
-                      <span className="font-medium">${pkg.pricing?.above_10 || 0}</span>
+                      <span className="font-medium">Rs. {pkg.pricing?.above_10 || 0}</span>
                     </div>
                   </div>
                 </div>

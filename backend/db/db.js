@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 
-dotenv.config();
+dotenv.config(); // Moved here to ensure env vars are loaded early
 
-console.log("MongoDB URI:", process.env.MONGO_URI); 
+console.log("MongoDB URI:", process.env.MONGO_URI);
 
 const connectDB = async () => {
   try {
@@ -16,12 +16,11 @@ const connectDB = async () => {
     console.error(`MongoDB Connection Error: ${error.message}`);
     process.exit(1); // Stop app if DB connection fails
   }
-};+
+};
 
 // Import models here
+require("../models/User");
 require("../models/Order");
-
-
 
 
 module.exports = connectDB;

@@ -1,13 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Star, Check, Clock, DollarSign, Package, Shirt, Droplet, Settings, X } from 'lucide-react';
-import WashingMachine from '../images/washingmachine.jpg';
-import machinecirle from '../images/machinicircle.png';
+import { ChevronRight, Star, Check, DollarSign, Package, Shirt, Droplet, Settings, X } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+
+import L from 'leaflet';
 import Navbar from '../common/navbar/Navbar';
 import Footer from '../home/footer/Footer';
-
+import ServiceSection1 from './service-section1/ServiceSection1';
+import ServiceSection2 from './service-section2/ServiceSection2';
 import ServiceSection3 from './service-section3/ServiceSection3';
 import ServiceSection4 from './service-section4/ServiceSection4';
+import { UserModel } from '../reg/UserModel'; // Import UserModel
+
+// Fix Leaflet marker icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 export default function LaundryServicePage() {
   const navigate = useNavigate();
@@ -15,6 +26,49 @@ export default function LaundryServicePage() {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    location: { lat: 6.9271, lng: 79.8612 }, // Default to Colombo, Sri Lanka
+    selectedService: '',
+    preferredDate: '',
+    preferredTime: '',
+    weight: '',
+    specialInstructions: '',
+    addOns: [],
+    paymentMethod: 'cash'
+  });
+  const [formError, setFormError] = useState(null);
+  const [geolocationError, setGeolocationError] = useState(null);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const session = UserModel.getSession();
+    console.log('Session Data:', session);
+    if (session?.email && session?.token) {
+      setUser({ email: session.email });
+      setFormData((prev) => ({
+        ...prev,
+        email: session.email
+      }));
+    } else {
+      console.warn('Invalid session data: Missing email or token', session);
+      setUser(null);
+      navigate('/login');
+    }
+  }, [navigate]);
+
+  // Sri Lanka map bounds
+  const sriLankaBounds = [
+    [5.8, 79.5], // Southwest
+    [9.9, 81.9]  // Northeast
+  ];
 
   // Icon mapping for different package types
   const getPackageIcon = (packageName) => {
@@ -23,7 +77,7 @@ export default function LaundryServicePage() {
     if (name.includes('wash')) return <Droplet className="text-green-500" />;
     if (name.includes('dry')) return <Shirt className="text-amber-500" />;
     if (name.includes('heavy') || name.includes('custom')) return <Settings className="text-purple-500" />;
-    return <Package className="text-blue-500" />; // Default icon
+    return <Package className="text-blue-500" />;
   };
 
   // Color mapping for different package types
@@ -33,9 +87,9 @@ export default function LaundryServicePage() {
     if (name.includes('wash')) return "bg-gradient-to-r from-green-500 to-emerald-400";
     if (name.includes('dry')) return "bg-gradient-to-r from-amber-500 to-yellow-400";
     if (name.includes('heavy') || name.includes('custom')) return "bg-gradient-to-r from-purple-500 to-pink-400";
-    return "bg-gradient-to-r from-blue-500 to-cyan-400"; // Default color
+    return "bg-gradient-to-r from-blue-500 to-cyan-400";
   };
-  
+
   // Helper function to format price with currency
   const formatPrice = (price) => {
     if (typeof price === 'number') {
@@ -47,15 +101,11 @@ export default function LaundryServicePage() {
   // Helper function to get starting price
   const getStartingPrice = (pricing) => {
     if (!pricing) return 'Contact for pricing';
-    
-    // Find the lowest price from available pricing tiers
     const prices = [];
     if (pricing.below_1) prices.push(pricing.below_1);
     if (pricing.between_1And10) prices.push(pricing.between_1And10);
     if (pricing.above_10) prices.push(pricing.above_10);
-    
     if (prices.length === 0) return 'Contact for pricing';
-    
     const minPrice = Math.min(...prices);
     return `Starting from Rs ${minPrice}(per 100g)`;
   };
@@ -70,7 +120,7 @@ export default function LaundryServicePage() {
     }
     return [
       "Professional service",
-      "Quality guaranteed", 
+      "Quality guaranteed",
       "Timely delivery",
       "Affordable pricing"
     ];
@@ -79,13 +129,9 @@ export default function LaundryServicePage() {
   // Helper function to format processing time
   const formatProcessingTime = (packageTime) => {
     if (!packageTime) return "24-48 hours";
-    
-    // If it's already a formatted string, return as is
     if (typeof packageTime === 'string' && !packageTime.includes('T')) {
       return packageTime;
     }
-    
-    // Try to parse as date and format
     try {
       const date = new Date(packageTime);
       if (!isNaN(date.getTime())) {
@@ -94,25 +140,34 @@ export default function LaundryServicePage() {
     } catch (error) {
       console.warn('Error parsing date:', error);
     }
-    
-    return "24-48 hours"; // Default fallback
+    return "24-48 hours";
   };
-  
+
   // Fetch packages from backend
   const fetchPackages = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/package');
+      const session = UserModel.getSession();
+      if (!session?.token) {
+        throw new Error('No valid session token');
+      }
+      const response = await fetch('http://localhost:5000/api/package', {
+        headers: {
+          'Authorization': `Bearer ${session.token}`
+        }
+      });
       if (!response.ok) {
+        if (response.status === 401) {
+          UserModel.clearSession();
+          navigate('/login');
+          return;
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-       
-      // Transform backend data to match frontend structure
       const transformedPackages = data.map((pkg, index) => {
         const processedFeatures = processFeatures(pkg.features);
         const pricing = pkg.pricing || {};
-        
         return {
           id: pkg.packageID || pkg._id || index + 1,
           packageID: pkg.packageID || pkg._id || index + 1,
@@ -142,7 +197,6 @@ export default function LaundryServicePage() {
           timeSavingTip: "Book in advance for better scheduling."
         };
       });
-      
       setPackages(transformedPackages);
       setError(null);
     } catch (error) {
@@ -158,14 +212,10 @@ export default function LaundryServicePage() {
     fetchPackages();
   }, []);
 
-  
-
-  // Use backend packages if available, otherwise use static services
-  const services = packages.length > 0 ? packages : fetchPackages;
-
   // Function to handle navigation to order form
   const handleOrderNow = (service) => {
     setSelectedService(service);
+    setFormData({ ...formData, selectedService: service.name });
     setTimeout(() => {
       const detailsSection = document.getElementById('service-details');
       if (detailsSection) {
@@ -174,129 +224,555 @@ export default function LaundryServicePage() {
     }, 100);
   };
 
-  // Function to handle "Book Now" button in hero section
-  const handleBookNow = () => {
-    navigate('/laundry-book');
+  // Function to handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
-  // Fixed handlebookServices function
+  // Function to handle add-ons checkbox
+  const handleAddOnChange = (addOn) => {
+    setFormData((prev) => {
+      const addOns = prev.addOns.includes(addOn)
+        ? prev.addOns.filter((item) => item !== addOn)
+        : [...prev.addOns, addOn];
+      return { ...prev, addOns };
+    });
+  };
+
+  // Function to handle map click
+  const handleMapClick = (latlng) => {
+    if (
+      latlng.lat >= sriLankaBounds[0][0] &&
+      latlng.lat <= sriLankaBounds[1][0] &&
+      latlng.lng >= sriLankaBounds[0][1] &&
+      latlng.lng <= sriLankaBounds[1][1]
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        location: { lat: latlng.lat, lng: latlng.lng }
+      }));
+      setGeolocationError(null);
+    } else {
+      setGeolocationError('Please select a location within Sri Lanka.');
+    }
+  };
+
+  // Component to handle map click events
+  function MapClickHandler() {
+    useMapEvents({
+      click(e) {
+        handleMapClick(e.latlng);
+      }
+    });
+    return null;
+  }
+
+  // Component to set map bounds
+  function MapBounds() {
+    const map = useMap();
+    useEffect(() => {
+      map.setMaxBounds(sriLankaBounds);
+      map.fitBounds(sriLankaBounds);
+    }, [map]);
+    return null;
+  }
+
+  // Function to get current location
+  const handleGetCurrentLocation = () => {
+    setGeolocationError(null);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          if (
+            latitude >= sriLankaBounds[0][0] &&
+            latitude <= sriLankaBounds[1][0] &&
+            longitude >= sriLankaBounds[0][1] &&
+            longitude <= sriLankaBounds[1][1]
+          ) {
+            setFormData((prev) => ({
+              ...prev,
+              location: { lat: latitude, lng: longitude }
+            }));
+          } else {
+            setGeolocationError('Your current location is outside Sri Lanka. Please select a location within Sri Lanka.');
+          }
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          setGeolocationError('Unable to access your location. Please allow location access or select manually on the map.');
+        }
+      );
+    } else {
+      setGeolocationError('Geolocation is not supported by your browser.');
+    }
+  };
+
+  // Function to calculate total amount
+  const calculateTotalAmount = () => {
+    let total = 0;
+    const weight = parseFloat(formData.weight) || 0;
+    if (selectedService && selectedService.weightPricing) {
+      const pricing = selectedService.weightPricing.find((p) => {
+        if (p.weight === "Below 1kg" && weight <= 1) return true;
+        if (p.weight === "1kg - 10kg" && weight > 1 && weight <= 10) return true;
+        if (p.weight === "Above 10kg" && weight > 10) return true;
+        return false;
+      });
+      if (pricing) {
+        const priceMatch = pricing.price.match(/Rs (\d+)/);
+        if (priceMatch) total = parseFloat(priceMatch[1]) * weight;
+      }
+    }
+    if (formData.addOns.includes('Premium Care')) total += 50;
+    if (formData.addOns.includes('Fragrance')) total += 300 * weight;
+    return total;
+  };
+
+  // Function to handle form submission
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setFormError(null);
+
+    // Require login
+    const session = UserModel.getSession();
+    if (!user || !session?.token) {
+      setFormError('Please log in to submit an order.');
+      navigate('/login');
+      return;
+    }
+
+    // Validate required fields
+    const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'selectedService', 'preferredDate', 'weight', 'location.lat', 'location.lng'];
+    const missingFields = requiredFields.filter(field => {
+      if (field.includes('.')) {
+        const [parent, child] = field.split('.');
+        return !formData[parent] || formData[parent][child] === undefined;
+      }
+      return !formData[field];
+    });
+
+    if (missingFields.includes('email')) {
+      setFormError('Please provide a valid email address.');
+      return;
+    } else if (missingFields.length > 0) {
+      setFormError(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setFormError('Please enter a valid email address');
+      return;
+    }
+
+    // Validate phone format
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      setFormError('Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    // Validate weight
+    const weight = parseFloat(formData.weight);
+    if (isNaN(weight) || weight <= 0) {
+      setFormError('Please enter a valid weight');
+      return;
+    }
+
+    // Validate location within Sri Lanka
+    if (
+      formData.location.lat < sriLankaBounds[0][0] ||
+      formData.location.lat > sriLankaBounds[1][0] ||
+      formData.location.lng < sriLankaBounds[0][1] ||
+      formData.location.lng > sriLankaBounds[1][1]
+    ) {
+      setFormError('Selected location is outside Sri Lanka.');
+      return;
+    }
+
+    try {
+      const orderData = {
+        orderID: `ORD-${Date.now()}`,
+        ...formData,
+        serviceDetails: selectedService,
+        totalAmount: calculateTotalAmount(),
+        addOnDetails: formData.addOns.map((addOn) => ({
+          name: addOn,
+          price: addOn === 'Premium Care' ? 50 : 300 * weight
+        })),
+        userEmail: user.email
+      };
+
+      const trySubmitOrder = async (token) => {
+        const response = await fetch('http://localhost:5000/api/order', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(orderData)
+        });
+        return response;
+      };
+
+      let response = await trySubmitOrder(session.token);
+
+      // Handle 401 error by attempting to refresh token
+      if (response.status === 401) {
+        console.warn('401 Unauthorized, attempting to refresh token');
+        const refreshResponse = await fetch('http://localhost:5000/api/auth/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email: user.email })
+        });
+
+        if (!refreshResponse.ok) {
+          setFormError('Session expired. Please log in again.');
+          UserModel.clearSession();
+          navigate('/login');
+          return;
+        }
+
+        const refreshData = await refreshResponse.json();
+        const newToken = refreshData.token;
+        if (newToken) {
+          const updatedSession = { ...session, token: newToken };
+          UserModel.setSession(updatedSession);
+          response = await trySubmitOrder(newToken);
+        } else {
+          setFormError('Failed to refresh session. Please log in again.');
+          UserModel.clearSession();
+          navigate('/login');
+          return;
+        }
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error Response:', errorData);
+        throw new Error(errorData.message || 'Failed to submit order');
+      }
+
+      setShowPopup(false);
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: user.email,
+        phone: '',
+        address: '',
+        city: '',
+        postalCode: '',
+        location: { lat: 6.9271, lng: 79.8612 },
+        selectedService: '',
+        preferredDate: '',
+        preferredTime: '',
+        weight: '',
+        specialInstructions: '',
+        addOns: [],
+        paymentMethod: 'cash'
+      });
+      alert('Order submitted successfully!');
+    } catch (error) {
+      console.error('Error submitting order:', error);
+      setFormError(error.message || 'Failed to submit order. Please try again.');
+    }
+  };
+
+  // Function to handle "Book Now" button
   const handlebookServices = (packageData) => {
+    const session = UserModel.getSession();
+    if (!user || !session?.token) {
+      setFormError('Please log in to book a service.');
+      navigate('/login');
+      return;
+    }
     if (!packageData) {
       navigate('/laundry-book');
       return;
     }
+    setSelectedService(packageData);
+    setFormData({ ...formData, selectedService: packageData.name });
+    setShowPopup(true);
+  };
 
-    const packageID = packageData.packageID || packageData.id;
-    
-    if (!packageID) {
-      console.error('Package data is missing packageID:', packageData);
-      alert('Error: Package information is missing. Please try again.');
+  // Function to handle "Book Now" in hero section
+  const handleBookNow = () => {
+    const session = UserModel.getSession();
+    if (!user || !session?.token) {
+      setFormError('Please log in to book a service.');
+      navigate('/login');
       return;
     }
-    
-    // Create a clean package object for navigation
-    const cleanPackageData = {
-      ...packageData,
-       // Remove non-serializable icon
-      packageID: packageID,
-      icon: undefined
-    };
-    
-    navigate(`/laundry-book?packageId=${packageID}`, {
-      state: {
-        selectedService: cleanPackageData
-      }
-    });
-
-    sessionStorage.setItem('selectedLaundryService', JSON.stringify(cleanPackageData));
+    navigate('/laundry-book');
   };
 
   return (
     <div className="bg-gray-50 min-h-screen">
       <Navbar />
-      {/* Hero Section */}
-      <div className="relative py-14 bg-gradient-to-r from-blue-900 to-blue-700">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center relative z-10">
-          <div className="md:w-1/2 mb-8 md:mb-0">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Professional Laundry Services</h2>
-            <p className="text-blue-100 text-lg mb-6">Experience premium care for your clothes with our expert washing, drying, and folding services.</p>
-            <div className="flex items-center mb-6">
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star key={star} size={20} fill="#FFDD00" color="#FFDD00" />
-                ))}
+      <ServiceSection1 />
+      <ServiceSection2 onOrderNow={handleOrderNow} />
+      
+      {/* Popup Form */}
+      {showPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Book {selectedService?.name}</h2>
+              <button onClick={() => setShowPopup(false)} className="text-gray-500 hover:text-gray-700">
+                <X size={24} />
+              </button>
+            </div>
+
+            {formError && (
+              <div className="bg-red-50 p-3 rounded-lg mb-4 text-red-600 text-sm">
+                {formError}
               </div>
-              <span className="ml-2 text-white">Trusted by 10,000+ customers</span>
-            </div>
-            <button 
-              onClick={() => handlebookServices(null)} // Pass null for general booking
-              className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg font-medium transition duration-300 flex items-center"
-            >
-              Book Now <ChevronRight size={20} className="ml-1" />
-            </button>
-          </div>
-          <div className="md:w-1/2 flex justify-center">
-            <div className="w-64 h-64 bg-white bg-opacity-10 rounded-full flex items-center justify-center">
-              <Package size={100} className="text-white" />
-            </div>
-          </div>
-        </div>
-      </div>
+            )}
 
-      {/* Services Section */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">Our Premium Services</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">Choose from our range of professional laundry services tailored to meet your specific needs with exceptional quality and care.</p>
-        </div>
+            {geolocationError && (
+              <div className="bg-yellow-50 p-3 rounded-lg mb-4 text-yellow-600 text-sm">
+                {geolocationError}
+              </div>
+            )}
 
-        {loading && (
-          <div className="text-center py-8">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Loading services...</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="text-center py-8">
-            <p className="text-red-600 mb-4">{error}</p>
-            <button 
-              onClick={fetchPackages}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
-        {!loading && !error && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {services.map((service) => (
-              <div 
-                key={service.id}
-                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition duration-300 border border-gray-100"
-              >
-                <div className={`${service.color} h-2`}></div>
-                <div className="p-6">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                    {service.icon}
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">{service.name}</h3>
-                  <p className="text-gray-600 mb-4">{service.description}</p>
-                  <div className="text-lg font-semibold text-gray-800 mb-4">{service.price}</div>
-                  
-                  <button 
-                    onClick={() => handleOrderNow(service)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition duration-300"
-                  >
-                    Order Now
-                  </button>
+            <form onSubmit={handleFormSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    className="w-full p-2 border border-gray-300 rounded-lg"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    className="w-full p-2 border border-gray-300 rounded-lg"
+                    required
+                  />
                 </div>
               </div>
-            ))}
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  required
+                  disabled={!!user}
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select Location on Map *</label>
+                <div className="h-64 w-full rounded-lg overflow-hidden">
+                  <MapContainer
+                    center={[formData.location.lat, formData.location.lng]}
+                    zoom={13}
+                    style={{ height: '100%', width: '100%' }}
+                    maxBounds={sriLankaBounds}
+                    maxBoundsViscosity={1.0}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    />
+                    <Marker position={[formData.location.lat, formData.location.lng]} />
+                    <MapClickHandler />
+                    <MapBounds />
+                  </MapContainer>
+                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  Selected: Lat {formData.location.lat.toFixed(4)}, Lng {formData.location.lng.toFixed(4)}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleGetCurrentLocation}
+                  className="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                >
+                  Use My Current Location
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    className="w-full p-2 border border-gray-300 rounded-lg"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
+                  <input
+                    type="text"
+                    name="postalCode"
+                    value={formData.postalCode}
+                    onChange={handleInputChange}
+                    className="w-full p-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Date *</label>
+                <input
+                  type="date"
+                  name="preferredDate"
+                  value={formData.preferredDate}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  required
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Time</label>
+                <select
+                  name="preferredTime"
+                  value={formData.preferredTime}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="">Select a time</option>
+                  <option value="Morning">Morning (9 AM - 12 PM)</option>
+                  <option value="Afternoon">Afternoon (12 PM - 3 PM)</option>
+                  <option value="Evening">Evening (3 PM - 6 PM)</option>
+                </select>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Avarage Weight of your laundry (kg) *</label>
+                <input
+                  type="number"
+                  name="weight"
+                  value={formData.weight}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  required
+                  min="0"
+                  step="0.1"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Add-Ons</label>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.addOns.includes('Premium Care')}
+                      onChange={() => handleAddOnChange('Premium Care')}
+                      className="mr-2"
+                    />
+                    Premium Care (+Rs 50)
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.addOns.includes('Fragrance')}
+                      onChange={() => handleAddOnChange('Fragrance')}
+                      className="mr-2"
+                    />
+                    Fragrance (+Rs 300 per kg)
+                  </label>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Special Instructions</label>
+                <textarea
+                  name="specialInstructions"
+                  value={formData.specialInstructions}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  rows="4"
+                ></textarea>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <select
+                  name="paymentMethod"
+                  value={formData.paymentMethod}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="cash">Cash on Delivery</option>
+                  <option value="card">Credit/Debit Card</option>
+                  <option value="upi">UPI</option>
+                </select>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                <p className="text-lg font-semibold text-gray-800">Avarage Total Price : Rs {calculateTotalAmount()}</p>
+                <p className="text-sm text-gray-500">This is an estimate based on the provided weight and selected add-ons.it can be change actual weight</p>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPopup(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Submit Order
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Service Details Section */}
       {selectedService && (
@@ -397,8 +873,8 @@ export default function LaundryServicePage() {
                         <div key={index} className={`flex justify-between p-3 rounded-lg ${index === 1 ? 'bg-green-50 border border-green-100' : 'bg-white border border-gray-100'}`}>
                           <div className="flex items-center">
                             <div className={`w-2 h-6 rounded-sm mr-3 ${
-                              index === 1 ? 'bg-green-400' : 
-                              index === 1 ? 'bg-yellow-400' : 'bg-red-400'
+                              index === 0 ? 'bg-red-400' : 
+                              index === 1 ? 'bg-green-400' : 'bg-yellow-400'
                             }`}></div>
                             <span className={`font-medium ${index === 1 ? 'text-green-800' : 'text-gray-800'}`}>
                               {pricing.weight}
@@ -412,8 +888,6 @@ export default function LaundryServicePage() {
                     <div className="mt-5 p-3 bg-gray-100 rounded-lg">
                       <h4 className="font-medium text-gray-700 mb-2">Additional Options</h4>
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        
-                        
                         <div className="flex items-center">
                           <Check size={14} className="text-green-500 mr-1" />
                           <span>Delivery (Free)</span>
@@ -425,13 +899,8 @@ export default function LaundryServicePage() {
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
-                    
-                  </div>
                 </div>
               </div>
-              
               
               {/* Testimonial for this service */}
               <div className="bg-gray-50 p-5 rounded-lg border border-gray-100 mb-6">
@@ -465,14 +934,12 @@ export default function LaundryServicePage() {
                 </button>
                 
                 <div className="flex w-full sm:w-auto">
-                  
                   <button
-                      onClick={() => handlebookServices(selectedService)}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition duration-300 flex items-center justify-center"
-                    >
-                      
-                      Book Now
-                    </button>
+                    onClick={() => handlebookServices(selectedService)}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition duration-300 flex items-center justify-center"
+                  >
+                    Book Now
+                  </button>
                 </div>
               </div>
             </div>
@@ -481,9 +948,9 @@ export default function LaundryServicePage() {
       )}
 
       {/* Why Choose Our Services */}
-     <ServiceSection3 />
+      <ServiceSection3 />
 
-      {/*What Our Customers Say*/}
+      {/* What Our Customers Say */}
       <ServiceSection4 />
 
       {/* Call to Action */}
@@ -500,10 +967,7 @@ export default function LaundryServicePage() {
         </div>
       </div>
 
-      {/* Footer */}
       <Footer />
     </div>
   );
 }
-
-     

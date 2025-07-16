@@ -1,4 +1,6 @@
 const express = require('express');
+
+const { verifyToken } = require('../middleware/authMiddleware');
 const router = express.Router();
 const {
     
@@ -16,7 +18,7 @@ router.get('/', getAllOrders);
 router.get('/:id', getOrder);
 
 // POST a new booking
-router.post('/', addOrder);
+router.post('/',verifyToken, addOrder);
 
 // PUT (update) a booking by ID
 router.put('/:id', updateOrder);

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import logo from '../../images/DIRTYCLOTHS.png';
-import UserProfile from '../../user_profile/UserProfile';
+import { UserModel } from "../../reg/UserModel";
 
 // Navigation items - defined outside component to avoid recreation on each render
 const navigationItems = [
@@ -20,7 +20,18 @@ export default function Navbar() {
   // Get current location from React Router
   const location = useLocation();
   const currentPath = location.pathname;
-  
+  const navigate = useNavigate();
+
+  // Check if user is logged in
+  const session = UserModel.getSession();
+  const isLoggedIn = !!session && !!session.token;
+
+  // Logout handler
+  const handleLogout = () => {
+    UserModel.clearSession();
+    navigate("/");
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
@@ -41,30 +52,29 @@ export default function Navbar() {
         <div className="flex justify-between h-16 md:h-20">
           {/* Logo section */}
           <div className="flex items-center">
-            <div className="flex-shrink-0 flex items-center">
-              <img
-                src={logo}
-                alt="DIRTYCLOTHS"
-                className="h-10 md:h-14 w-auto"
-              />
-            </div>
+            <img
+              src={logo}
+              alt="DIRTYCLOTHS"
+              className="h-10 md:h-14 w-auto"
+            />
           </div>
-          
-          {/* Navigation section - hidden on mobile */}
+
+          {/* Navigation section */}
           <div className="hidden md:flex md:items-center md:justify-center flex-grow">
             <div className="flex space-x-8">
               {navigationItems.map((item) => {
-                // Check if this item's path matches the current path
-                // For home page, check for exact match, otherwise check if path starts with item's href
-                const isCurrent = 
-                  item.href === '/' 
-                    ? currentPath === '/' 
+                // Hide "Orders" if not logged in
+                if (item.name === "Orders" && !isLoggedIn) return null;
+                // Hide "Services" if not logged in
+                if (item.name === "Services" && !isLoggedIn) return null;
+                const isCurrent =
+                  item.href === '/'
+                    ? currentPath === '/'
                     : currentPath.startsWith(item.href);
-                
                 return (
-                  <a
+                  <Link
                     key={item.name}
-                    href={item.href}
+                    to={item.href}
                     className={`${
                       isCurrent
                         ? 'text-blue-600 border-b-2 border-blue-600 font-medium'
@@ -73,42 +83,72 @@ export default function Navbar() {
                     aria-current={isCurrent ? 'page' : undefined}
                   >
                     {item.name}
-                  </a>
+                  </Link>
                 );
               })}
-            </div>
-          </div>
-          
-          {/* User profile section - right aligned */}
-          <div className="flex items-center">
-            <div className="relative" ref={dropdownRef}>
-              <button 
-                className="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              >
-                <img
-                  className="h-8 w-8 md:h-10 md:w-10 rounded-full object-cover border-2 border-gray-200 hover:border-blue-400 transition-colors duration-300"
-                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                  alt="User profile"
-                />
-              </button>
-              {/* Profile dropdown menu */}
-              {profileDropdownOpen && (
-                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
-                  <Link 
-                    to="/userprofile" 
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"
-                    onClick={() => setProfileDropdownOpen(false)} // Close dropdown when clicked
-                  >
-                    Your Profile
-                  </Link>
-                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200">
-                    Sign out
-                  </a>
-                </div>
+              {/* Show "Service Details" only if not logged in */}
+              {!isLoggedIn && (
+                <Link
+                  to="/service-details"
+                  className="text-gray-800 hover:text-blue-500 px-1 py-2 text-base transition-colors duration-200"
+                >
+                  Service Details
+                </Link>
               )}
             </div>
-            
+          </div>
+
+          {/* Right side: Profile or Login/Register */}
+          <div className="flex items-center space-x-4">
+            {isLoggedIn ? (
+              // Profile dropdown code
+              <div className="relative" ref={dropdownRef}>
+                <button 
+                  className="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                >
+                  <img
+                    className="h-8 w-8 md:h-10 md:w-10 rounded-full object-cover border-2 border-gray-200 hover:border-blue-400 transition-colors duration-300"
+                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+                    alt="User profile"
+                  />
+                </button>
+                {/* Profile dropdown menu */}
+                {profileDropdownOpen && (
+                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <Link 
+                      to="/userprofile" 
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"
+                      onClick={() => setProfileDropdownOpen(false)} // Close dropdown when clicked
+                    >
+                      Your Profile
+                    </Link>
+                    <button
+                      type="button"
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"
+                      onClick={handleLogout}
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="text-gray-800 hover:text-blue-500 px-4 py-2 text-base transition-colors duration-200"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="text-gray-800 hover:text-blue-500 px-4 py-2 text-base transition-colors duration-200"
+                >
+                  Register
+                </Link>
+              </>
+            )}
             {/* Mobile menu button */}
             <div className="flex items-center md:hidden ml-4">
               <button
@@ -169,9 +209,9 @@ export default function Navbar() {
                   : currentPath.startsWith(item.href);
               
               return (
-                <a
+                <Link
                   key={item.name}
-                  href={item.href}
+                  to={item.href}
                   className={`${
                     isCurrent
                       ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
@@ -180,9 +220,25 @@ export default function Navbar() {
                   aria-current={isCurrent ? 'page' : undefined}
                 >
                   {item.name}
-                </a>
+                </Link>
               );
             })}
+            {!isLoggedIn && (
+              <>
+                <Link
+                  to="/login"
+                  className="block px-3 py-3 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-500 transition-all duration-200"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="block px-3 py-3 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-500 transition-all duration-200"
+                >
+                  Register
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}
