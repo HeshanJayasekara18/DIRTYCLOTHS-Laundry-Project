@@ -51,12 +51,21 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       name,
-      role: "user", // Default role
+      role: "user",
+      addresses: [] // Initialize addresses array
     });
     await user.save();
 
-    const token = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-    res.status(201).json({ token, email: user.email, name: user.name, role: user.role });
+    const token = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "24h" });
+    res.status(201).json({ 
+      token, 
+      email: user.email, 
+      name: user.name, 
+      role: user.role,
+      mobile: user.mobile || "",
+      profileImage: user.profileImage || null,
+      addresses: user.addresses || []
+    });
   } catch (error) {
     console.error("Registration error:", error);
     res.status(500).json({ message: "Registration failed" });
@@ -75,11 +84,41 @@ const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-    res.json({ token, email: user.email, name: user.name, role: user.role, mobile: user.mobile || "", profileImage: user.profileImage || null, addresses: user.addresses || [] });
+    const token = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "24h" });
+    res.json({ 
+      token, 
+      email: user.email, 
+      name: user.name, 
+      role: user.role, 
+      mobile: user.mobile || "", 
+      profileImage: user.profileImage || null, 
+      addresses: user.addresses || [] 
+    });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Login failed" });
+  }
+};
+
+// Get user profile
+const getUserProfile = async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      mobile: user.mobile || "",
+      profileImage: user.profileImage || null,
+      addresses: user.addresses || []
+    });
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({ message: "Failed to fetch profile" });
   }
 };
 
@@ -87,21 +126,26 @@ const updateUser = async (req, res) => {
   try {
     const { name, mobile } = req.body;
     const session = req.user;
-    const user = await User.findOne({ email: session.email });
-
-    if (!user || user === null) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    if (name) user.name = name;
+    
+    const update = {};
+    if (name) update.name = name;
     if (mobile) {
       const phoneRegex = /^(?:\+94\d{9}|07\d{8})$/;
       if (!phoneRegex.test(mobile)) {
         return res.status(400).json({ message: "Invalid mobile number format" });
       }
-      user.mobile = mobile;
+      update.mobile = mobile;
     }
-    await user.save();
+
+    const user = await User.findOneAndUpdate(
+      { email: session.email },
+      update,
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     res.json({
       message: "Profile updated successfully",
@@ -113,22 +157,30 @@ const updateUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating user:", error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((err) => err.message).join(', ');
+      return res.status(400).json({ message: messages });
+    }
     res.status(500).json({ message: "Failed to update profile" });
   }
 };
-
 const uploadProfileImage = async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.user.email });
-    if (!user || user === null) return res.status(404).json({ message: "User not found" });
-
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
     const imagePath = `/Uploads/${req.file.filename}`;
-    user.profileImage = imagePath;
-    await user.save();
+    const user = await User.findOneAndUpdate(
+      { email: req.user.email },
+      { profileImage: imagePath },
+      { new: true }
+    );
 
-    res.json({ profileImage: imagePath });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ 
+      message: "Profile image uploaded successfully",
+      profileImage: imagePath 
+    });
   } catch (error) {
     console.error("Profile image upload error:", error);
     res.status(500).json({ message: "Failed to upload profile image" });
@@ -141,7 +193,12 @@ const changePassword = async (req, res) => {
     const session = req.user;
     const user = await User.findOne({ email: session.email });
 
-    if (!user || !(await user.comparePassword(currentPassword))) {
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
       return res.status(401).json({ message: "Invalid current password" });
     }
 
@@ -149,8 +206,13 @@ const changePassword = async (req, res) => {
       return res.status(400).json({ message: "New password must be at least 8 characters" });
     }
 
-    user.password = newPassword;
-    await user.save();
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await User.findOneAndUpdate(
+      { email: session.email },
+      { password: hashedPassword }
+    );
 
     res.json({ message: "Password updated successfully" });
   } catch (error) {
@@ -167,28 +229,38 @@ const addAddress = async (req, res) => {
     }
 
     const user = await User.findOne({ email: req.user.email });
-    if (!user || user === null) {
-      console.log("User not found for email:", req.user.email);
+    if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (isDefault) {
+    // Initialize addresses array if it doesn't exist
+    if (!user.addresses) {
+      user.addresses = [];
+    }
+
+    // If this is the first address or isDefault is true, set as default
+    const shouldSetAsDefault = isDefault || user.addresses.length === 0;
+
+    if (shouldSetAsDefault) {
       user.addresses.forEach((addr) => (addr.isDefault = false));
     }
 
-    user.addresses.push({
+    const newAddress = {
       _id: new mongoose.Types.ObjectId().toString(),
       label,
       address,
       lat: parseFloat(lat),
       lng: parseFloat(lng),
-      isDefault: !!isDefault,
-    });
+      isDefault: shouldSetAsDefault,
+    };
+
+    user.addresses.push(newAddress);
     await user.save();
 
     res.json({
       message: "Address added successfully",
-      address: user.addresses[user.addresses.length - 1]
+      address: newAddress,
+      addresses: user.addresses
     });
   } catch (error) {
     console.error("Add address error:", error);
@@ -202,15 +274,21 @@ const deleteAddress = async (req, res) => {
     const session = req.user;
     const user = await User.findOne({ email: session.email });
 
-    if (!user || user === null) {
+    if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     const initialLength = user.addresses.length;
+    const deletedAddress = user.addresses.find(addr => addr._id === id);
     user.addresses = user.addresses.filter((addr) => addr._id !== id);
 
     if (user.addresses.length === initialLength) {
       return res.status(404).json({ message: "Address not found" });
+    }
+
+    // If deleted address was default and there are remaining addresses, set first one as default
+    if (deletedAddress && deletedAddress.isDefault && user.addresses.length > 0) {
+      user.addresses[0].isDefault = true;
     }
 
     await user.save();
@@ -231,7 +309,7 @@ const setDefaultAddress = async (req, res) => {
     const session = req.user;
     const user = await User.findOne({ email: session.email });
 
-    if (!user || user === null) {
+    if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
@@ -258,6 +336,7 @@ const setDefaultAddress = async (req, res) => {
 };
 
 module.exports = {
+  getUserProfile,
   updateUser,
   uploadProfileImage,
   changePassword,

@@ -135,19 +135,34 @@ export default function Navbar() {
               </div>
             ) : (
               <>
-                <Link
-                  to="/login"
-                  className="text-gray-800 hover:text-blue-500 px-4 py-2 text-base transition-colors duration-200"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="text-gray-800 hover:text-blue-500 px-4 py-2 text-base transition-colors duration-200"
-                >
-                  Register
-                </Link>
-              </>
+        {/* Modern Gradient Style */}
+        <div className="flex items-center gap-4">
+          <a
+            href="/login"
+            className="group relative px-6 py-3 font-medium text-white transition-all duration-300 ease-out hover:scale-105"
+          >
+            <span className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-300 group-hover:from-blue-600 group-hover:to-purple-700 group-hover:shadow-lg"></span>
+            <span className="relative flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+              </svg>
+              Login
+            </span>
+          </a>
+          <a
+            href="/register"
+            className="group relative px-6 py-3 font-medium text-gray-800 transition-all duration-300 ease-out hover:scale-105"
+          >
+            <span className="absolute inset-0 rounded-lg border-2 border-gray-800 transition-all duration-300 group-hover:bg-gray-800 group-hover:shadow-lg"></span>
+            <span className="relative flex items-center gap-2 transition-colors duration-300 group-hover:text-white">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Register
+            </span>
+          </a>
+        </div>
+      </>
             )}
             {/* Mobile menu button */}
             <div className="flex items-center md:hidden ml-4">

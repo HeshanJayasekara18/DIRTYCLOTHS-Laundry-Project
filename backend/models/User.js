@@ -1,5 +1,33 @@
 const mongoose = require('mongoose');
 
+const addressSchema = new mongoose.Schema({
+  _id: {
+    type: String,
+    default: () => new mongoose.Types.ObjectId().toString()
+  },
+  label: {
+    type: String,
+    required: true,
+    enum: ['home', 'work', 'favorite', 'other']
+  },
+  address: {
+    type: String,
+    required: true
+  },
+  lat: {
+    type: Number,
+    required: true
+  },
+  lng: {
+    type: Number,
+    required: true
+  },
+  isDefault: {
+    type: Boolean,
+    default: false
+  }
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   email: {
     type: String,
@@ -21,15 +49,19 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     enum: ['user', 'admin'],
-    default: 'user'  // Default role is 'user'
+    default: 'user'
   },
   mobile: {
     type: String,
-    default: ''
+    default: ''  // Fixed: removed duplicate type declaration
   },
   profileImage: {
     type: String,
     default: null
+  },
+  addresses: {
+    type: [addressSchema],
+    default: []
   }
 }, {
   timestamps: true

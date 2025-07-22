@@ -1,828 +1,844 @@
-import React, { useState, useEffect, useRef } from "react";
-import {
-  User,
-  Phone,
-  Lock,
-  MapPin,
+import React, { useState, useEffect } from 'react';
+import { 
+  User, 
+  Edit3, 
+  Save, 
+  X, 
+  Plus, 
+  MapPin, 
+  Home, 
+  Briefcase, 
+  Heart, 
+  Eye, 
+  EyeOff,
   Camera,
-  Save,
-  Edit2,
-  Plus,
+  ArrowLeft,
+  Settings,
+  Shield,
+  CheckCircle,
+  AlertCircle,
   Trash2,
-  Navigation,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { UserModel } from "./../reg/UserModel";
-import Navbar from "../common/navbar/Navbar";
+  Star
+} from 'lucide-react';
+import Navbar from '../common/navbar/Navbar';
 
 const UserProfile = () => {
-  const [profile, setProfile] = useState({
-    name: "",
-    mobile: "",
-    email: "",
-    profileImage: null,
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [activeTab, setActiveTab] = useState('profile');
+  const [editMode, setEditMode] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // Form states
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    mobile: ''
   });
-  const [addresses, setAddresses] = useState([]);
-  const [isEditing, setIsEditing] = useState({
-    name: false,
-    mobile: false,
-    password: false,
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+    showCurrentPassword: false,
+    showNewPassword: false,
+    showConfirmPassword: false
   });
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+
+  const [addressForm, setAddressForm] = useState({
+    label: 'home',
+    address: '',
+    lat: '',
+    lng: '',
+    isDefault: false
   });
-  const [showAddAddress, setShowAddAddress] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState(null);
-  const [currentLocation, setCurrentLocation] = useState(null);
-  const [newAddress, setNewAddress] = useState({
-    label: "",
-    address: "",
-    lat: null,
-    lng: null,
-  });
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
 
-  const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const navigate = useNavigate();
+  // Configuration - Use environment variable with fallback
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const validAddressLabels = ['home', 'work', 'favorite', 'other'];
+  
+  // Get token from localStorage
+  const getToken = () => localStorage.getItem('token');
 
-  // Phone number validation (Sri Lankan format: +94xxxxxxxxx or 07xxxxxxxx)
-  const validatePhoneNumber = (mobile) => {
-    const phoneRegex = /^(?:\+94\d{9}|07\d{8})$/;
-    return phoneRegex.test(mobile);
-  };
-
-  // Fetch user data on component mount
-  useEffect(() => {
-    const fetchUserData = async () => {
-      const session = UserModel.getSession();
-      if (!session || !session.token) {
-        console.log("No session token, redirecting to login");
-        navigate("/login");
-        return;
-      }
-
-      try {
-        const response = await axios.get("http://localhost:5000/api/auth/user", {
-          headers: {
-            Authorization: `Bearer ${session.token}`,
-          },
-        });
-        const userData = response.data;
-        setProfile({
-          name: userData.name || "Unknown User",
-          mobile: userData.mobile || "",
-          email: userData.email || "",
-          profileImage: userData.profileImage || null,
-        });
-
-        const validAddresses = (userData.addresses || []).map((addr) => ({
-          ...addr,
-          _id: addr._id || Date.now().toString(),
-          lat: addr.lat || 0,
-          lng: addr.lng || 0,
-          isDefault: addr.isDefault || false,
-        }));
-        setAddresses(validAddresses);
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        if (error.response?.status === 401) {
-          UserModel.clearSession();
-          navigate("/login");
-        } else {
-          setErrorMessage(
-            error.response?.data?.message || "Failed to fetch user data"
-          );
-        }
-      }
-    };
-
-    fetchUserData();
-  }, [navigate]);
-
-  // Map initialization
-  useEffect(() => {
-    if (showAddAddress && mapRef.current && !mapInstanceRef.current) {
-      const loadLeaflet = async () => {
-        try {
-          if (!window.L) {
-            const link = document.createElement("link");
-            link.rel = "stylesheet";
-            link.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css";
-            document.head.appendChild(link);
-
-            await new Promise((resolve, reject) => {
-              const script = document.createElement("script");
-              script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js";
-              script.onload = () => {
-                setIsMapLoaded(true);
-                resolve();
-              };
-              script.onerror = () => {
-                setErrorMessage("Failed to load map library");
-                reject();
-              };
-              document.head.appendChild(script);
-            });
-          } else {
-            setIsMapLoaded(true);
-          }
-          initializeMap();
-        } catch (error) {
-          console.error("Leaflet loading error:", error);
-          setErrorMessage("Failed to initialize map");
-        }
-      };
-
-      loadLeaflet();
-    }
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-        setIsMapLoaded(false);
-      }
-    };
-  }, [showAddAddress]);
-
-  const initializeMap = () => {
-    if (!mapRef.current || !window.L) {
-      setErrorMessage("Map initialization failed");
-      return;
-    }
-
-    const map = window.L.map(mapRef.current).setView([6.9271, 79.8612], 13); // Default to Colombo, Sri Lanka
-    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
-    }).addTo(map);
-
-    map.on("click", (e) => {
-      const { lat, lng } = e.latlng;
-      setSelectedLocation({ lat, lng });
-      map.eachLayer((layer) => {
-        if (layer instanceof window.L.Marker) {
-          map.removeLayer(layer);
+  // API call helper
+  const apiCall = async (url, options = {}) => {
+    const token = getToken();
+    
+    try {
+      const fullUrl = `${API_BASE_URL}${url}`;
+      
+      const response = await fetch(fullUrl, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+          ...options.headers
         }
       });
-      window.L.marker([lat, lng]).addTo(map);
-      setNewAddress((prev) => ({
-        ...prev,
-        lat,
-        lng,
-        address: `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`,
-      }));
-    });
 
-    mapInstanceRef.current = map;
+      // Handle non-JSON responses
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(text || 'Invalid response format');
+      }
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('API call error:', error);
+      throw error;
+    }
+  };
+
+  // Fetch user profile
+  const fetchUserProfile = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await apiCall('/api/auth/user');
+      setUser(data);
+      setProfileForm({
+        name: data.name || '',
+        mobile: data.mobile || ''
+      });
+    } catch (err) {
+      setError(err.message || 'Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Update profile
-  const handleSave = async (field, value) => {
-    if (field === "mobile" && value && !validatePhoneNumber(value)) {
-      setErrorMessage("Invalid phone number format. Use +94xxxxxxxxx or 07xxxxxxxx");
+  const updateProfile = async () => {
+    if (!profileForm.name.trim()) {
+      setError('Name is required');
       return;
     }
 
     try {
-      const session = UserModel.getSession();
-      const response = await axios.put(
-        "http://localhost:5000/api/auth/user",
-        { [field]: value },
-        {
-          headers: {
-            Authorization: `Bearer ${session.token}`,
-          },
-        }
-      );
-      console.log("Updated profile:", response.data);
-      setProfile({ ...profile, [field]: value });
-      setIsEditing({ ...isEditing, [field]: false });
-
-      const updatedSession = {
-        ...session,
-        name: response.data.name,
-        email: response.data.email,
-        mobile: response.data.mobile,
-        profileImage: response.data.profileImage,
-        addresses: response.data.addresses,
-      };
-      UserModel.setSession(updatedSession);
-      setErrorMessage(`${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully`);
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      setErrorMessage(error.response?.data?.message || `Failed to update ${field}`);
+      setError('');
+      const data = await apiCall('/api/auth/user', {
+        method: 'PUT',
+        body: JSON.stringify(profileForm)
+      });
+      setUser(prev => ({ ...prev, ...data }));
+      setEditMode(false);
+      setSuccess('Profile updated successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to update profile');
     }
   };
 
-  // Handle image upload
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        setErrorMessage("Please select an image file");
+  // Change password
+  const changePassword = async () => {
+    try {
+      setError('');
+      
+      if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+        setError('All password fields are required');
         return;
       }
-      const session = UserModel.getSession();
-      const formData = new FormData();
-      formData.append("profileImage", file);
-      try {
-        const response = await axios.post(
-          "http://localhost:5000/api/auth/user/profile-image",
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${session.token}`,
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
-        const newImageUrl = response.data.profileImage;
-        setProfile((prev) => ({
-          ...prev,
-          profileImage: newImageUrl,
-        }));
-        const updatedSession = { ...session, profileImage: newImageUrl };
-        UserModel.setSession(updatedSession);
-        setErrorMessage("Profile image updated successfully!");
-      } catch (error) {
-        setErrorMessage(
-          error.response?.data?.message || "Failed to upload profile image"
-        );
-        console.error("Image upload error:", error);
+      
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        setError('New passwords do not match');
+        return;
       }
+      
+      if (passwordForm.newPassword.length < 6) {
+        setError('New password must be at least 6 characters long');
+        return;
+      }
+      
+      await apiCall('/api/auth/change-password', {
+        method: 'PUT',
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })
+      });
+      
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+        showCurrentPassword: false,
+        showNewPassword: false,
+        showConfirmPassword: false
+      });
+      setShowPasswordForm(false);
+      setSuccess('Password updated successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to update password');
     }
   };
 
   // Add address
   const addAddress = async () => {
-    if (!newAddress.label) {
-      setErrorMessage("Address label is required");
-      return;
-    }
-    if (!selectedLocation) {
-      setErrorMessage("Please select a location on the map");
-      return;
-    }
-
-    let formattedAddress = `Lat: ${selectedLocation.lat.toFixed(4)}, Lng: ${selectedLocation.lng.toFixed(4)}`;
     try {
-      const response = await axios.get(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${selectedLocation.lat}&lon=${selectedLocation.lng}`,
-        {
-          headers: {
-            'User-Agent': 'DirtyClothsApp/1.0 (contact: your-email@example.com)'
-          }
-        }
-      );
-      if (response.data && response.data.display_name) {
-        formattedAddress = response.data.display_name;
+      setError('');
+      
+      if (!addressForm.address.trim()) {
+        setError('Address is required');
+        return;
       }
-    } catch (error) {
-      console.error("Geocoding error:", error);
-    }
-
-    const newAddr = {
-      _id: Date.now().toString(),
-      label: newAddress.label,
-      address: formattedAddress,
-      lat: selectedLocation.lat,
-      lng: selectedLocation.lng,
-      isDefault: addresses.length === 0,
-    };
-
-    try {
-      const session = UserModel.getSession();
-      const response = await axios.post(
-        "http://localhost:5000/api/auth/user/addresses",
-        newAddr,
-        {
-          headers: {
-            Authorization: `Bearer ${session.token}`,
-          },
-        }
-      );
-      setAddresses([...addresses, { ...response.data.address, _id: response.data.address._id }]);
-      setNewAddress({ label: "", address: "", lat: null, lng: null });
-      setSelectedLocation(null);
-      setShowAddAddress(false);
-      setErrorMessage("Address added successfully");
-    } catch (error) {
-      setErrorMessage(error.response?.data?.message || "Failed to add address");
+      
+      if (!validAddressLabels.includes(addressForm.label)) {
+        setError(`Invalid label. Must be one of: ${validAddressLabels.join(', ')}`);
+        return;
+      }
+      
+      if (addressForm.lat && (isNaN(addressForm.lat) || addressForm.lat < -90 || addressForm.lat > 90)) {
+        setError('Latitude must be between -90 and 90');
+        return;
+      }
+      
+      if (addressForm.lng && (isNaN(addressForm.lng) || addressForm.lng < -180 || addressForm.lng > 180)) {
+        setError('Longitude must be between -180 and 180');
+        return;
+      }
+      
+      const data = await apiCall('/api/auth/user/addresses', {
+        method: 'POST',
+        body: JSON.stringify({
+          label: addressForm.label,
+          address: addressForm.address.trim(),
+          lat: addressForm.lat || undefined,
+          lng: addressForm.lng || undefined,
+          isDefault: addressForm.isDefault
+        })
+      });
+      
+      setUser(prev => ({ ...prev, addresses: data.addresses }));
+      setAddressForm({
+        label: 'home',
+        address: '',
+        lat: '',
+        lng: '',
+        isDefault: false
+      });
+      setShowAddressForm(false);
+      setSuccess('Address added successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to add address');
     }
   };
 
   // Delete address
-  const deleteAddress = async (id) => {
+  const deleteAddress = async (addressId) => {
+    if (!window.confirm('Are you sure you want to delete this address?')) {
+      return;
+    }
+    
     try {
-      const session = UserModel.getSession();
-      await axios.delete(`http://localhost:5000/api/auth/user/addresses/${id}`, {
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
+      setError('');
+      const data = await apiCall(`/api/auth/user/addresses/${addressId}`, {
+        method: 'DELETE'
       });
-      setAddresses(addresses.filter((addr) => addr._id !== id));
-      setErrorMessage("Address deleted successfully");
-    } catch (error) {
-      console.error("Error deleting address:", error);
-      setErrorMessage(error.response?.data?.message || "Failed to delete address");
+      setUser(prev => ({ ...prev, addresses: data.addresses }));
+      setSuccess('Address deleted successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to delete address');
     }
   };
 
   // Set default address
-  const setDefaultAddress = async (id) => {
+  const setDefaultAddress = async (addressId) => {
     try {
-      const session = UserModel.getSession();
-      await axios.put(
-        `http://localhost:5000/api/auth/user/addresses/${id}/default`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${session.token}`,
-          },
-        }
-      );
-      setAddresses(
-        addresses.map((addr) => ({
-          ...addr,
-          isDefault: addr._id === id,
-        }))
-      );
-      setErrorMessage("Default address set successfully");
-    } catch (error) {
-      console.error("Error setting default address:", error);
-      setErrorMessage(error.response?.data?.message || "Failed to set default address");
+      setError('');
+      const data = await apiCall(`/api/auth/user/addresses/${addressId}/default`, {
+        method: 'PUT'
+      });
+      setUser(prev => ({ ...prev, addresses: data.addresses }));
+      setSuccess('Default address updated!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to set default address');
     }
   };
 
-  // Get current location
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setCurrentLocation({ lat: latitude, lng: longitude });
-          if (mapInstanceRef.current) {
-            mapInstanceRef.current.setView([latitude, longitude], 15);
-            mapInstanceRef.current.eachLayer((layer) => {
-              if (layer instanceof window.L.Marker) {
-                mapInstanceRef.current.removeLayer(layer);
-              }
-            });
-            const marker = window.L.marker([latitude, longitude])
-              .addTo(mapInstanceRef.current)
-              .bindPopup("Your Current Location")
-              .openPopup();
-            setSelectedLocation({ lat: latitude, lng: longitude });
-            setNewAddress((prev) => ({
-              ...prev,
-              lat: latitude,
-              lng: longitude,
-              address: `Current Location - Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`,
-            }));
-            setErrorMessage("Current location set successfully");
-          }
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-          setErrorMessage("Unable to get your location. Please select a location on the map.");
-        },
-        { timeout: 10000, maximumAge: 60000 }
-      );
-    } else {
-      setErrorMessage("Geolocation is not supported by this browser.");
+  // Upload profile image
+  const uploadProfileImage = async (file) => {
+    try {
+      setError('');
+      setUploading(true);
+      
+      if (!file.type.startsWith('image/')) {
+        setError('Please select a valid image file');
+        return;
+      }
+      
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        setError('Image file must be less than 5MB');
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('profileImage', file);
+
+      const token = getToken();
+      const fullUrl = `${API_BASE_URL}/api/auth/user/profile-image`;
+      
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Upload failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setUser(prev => ({ 
+        ...prev, 
+        profileImage: data.profileImage 
+      }));
+      setSuccess('Profile image updated successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError(err.message || 'Failed to upload image');
+    } finally {
+      setUploading(false);
     }
   };
 
-  // Handle password change
-  const handlePasswordChange = async () => {
-    if (!passwordData.currentPassword) {
-      setErrorMessage("Current password is required");
-      return;
-    }
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setErrorMessage("New password and confirm password do not match");
-      return;
-    }
-    if (passwordData.newPassword.length < 8) {
-      setErrorMessage("New password must be at least 8 characters long");
-      return;
-    }
-    try {
-      const session = UserModel.getSession();
-      await axios.put(
-        "http://localhost:5000/api/auth/user/password",
-        {
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${session.token}`,
-          },
-        }
-      );
-      setShowPasswordChange(false);
-      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      setErrorMessage("Password updated successfully");
-    } catch (error) {
-      console.error("Error updating password:", error);
-      setErrorMessage(error.response?.data?.message || "Failed to update password");
+  // Get address icon
+  const getAddressIcon = (label) => {
+    switch (label) {
+      case 'home': return <Home size={20} className="text-blue-600" />;
+      case 'work': return <Briefcase size={20} className="text-green-600" />;
+      case 'favorite': return <Heart size={20} className="text-red-600" />;
+      default: return <MapPin size={20} className="text-gray-600" />;
     }
   };
+
+  // Get address label display name
+  const getAddressLabelDisplay = (label) => {
+    switch (label) {
+      case 'home': return 'Home';
+      case 'work': return 'Work';
+      case 'favorite': return 'Favorite';
+      case 'other': return 'Other';
+      default: return label;
+    }
+  };
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+            <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-blue-400 rounded-full animate-spin mx-auto" style={{animationDelay: '0.15s'}}></div>
+          </div>
+          <p className="mt-6 text-slate-600 font-medium">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="nav-bar">
-      <Navbar />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          {errorMessage && (
-            <div
-              className={`mb-4 p-3 rounded-lg text-center ${
-                errorMessage.includes("successfully")
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-              }`}
-              role="alert"
-            >
-              {errorMessage}
+    <div>
+      <Navbar/>
+    
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Header */}
+      <div className="bg-white/70 backdrop-blur-sm border-b border-slate-200/50 sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                <ArrowLeft size={20} className="text-slate-600" />
+              </button>
+              <h1 className="text-xl font-bold text-slate-900">Profile Settings</h1>
             </div>
-          )}
-
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">DIRTYCLOTHS</h1>
-            <p className="text-gray-600">Midigama • Premium Laundry Service</p>
+            <div className="flex items-center gap-2">
+              <button className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                <Settings size={20} className="text-slate-600" />
+              </button>
+            </div>
           </div>
+        </div>
+      </div>
 
-          {/* Profile Card */}
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-              <div className="flex items-center space-x-6">
-                <div className="relative">
-                  <div className="w-24 h-24 rounded-full bg-white p-1">
-                    {profile.profileImage ? (
-                      <img
-                        src={
-                          profile.profileImage
-                            ? `${profile.profileImage}?t=${new Date().getTime()}`
-                            : "/default-profile.png"
-                        }
-                        alt="Profile"
-                        className="w-full h-full rounded-full object-cover"
-                        onError={(e) => {
-                          console.error("Image failed to load:", profile.profileImage);
-                          e.target.src = "/default-profile.png";
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
-                        <User className="w-8 h-8 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute -bottom-2 -right-2 bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-shadow"
-                    aria-label="Upload profile picture"
-                  >
-                    <Camera className="w-4 h-4 text-gray-600" />
-                  </button>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Profile Header Card */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 mb-8 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8">
+            <div className="flex items-center gap-6">
+              <div className="relative group">
+                <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center overflow-hidden border-2 border-white/30">
+                  {user?.profileImage ? (
+                    <img 
+                      src={`${API_BASE_URL}/${user.profileImage}`}
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.parentNode.querySelector('svg').classList.remove('hidden');
+                      }}
+                    />
+                  ) : (
+                    <User size={40} className="text-white" />
+                  )}
+                  <User 
+                    size={40} 
+                    className={`text-white ${user?.profileImage ? 'hidden' : ''}`} 
+                  />
+                  {uploading && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+                <label className="absolute -bottom-2 -right-2 bg-white text-slate-600 rounded-full w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors shadow-lg group-hover:scale-110 transform">
+                  <Camera size={16} />
                   <input
-                    ref={fileInputRef}
                     type="file"
                     accept="image/*"
-                    onChange={handleImageUpload}
                     className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        uploadProfileImage(e.target.files[0]);
+                      }
+                    }}
+                    disabled={uploading}
                   />
-                </div>
-                <div className="text-white">
-                  <h2 className="text-2xl font-bold">{profile.name}</h2>
-                  <p className="text-blue-100">{profile.email}</p>
-                  <p className="text-blue-100">{profile.mobile || "No mobile number set"}</p>
-                </div>
+                </label>
               </div>
-            </div>
-            <div className="p-8">
-              <h3 className="text-xl font-semibold text-gray-800 mb-6">Profile Information</h3>
-              <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <User className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Full Name</label>
-                      {isEditing.name ? (
-                        <input
-                          type="text"
-                          value={profile.name}
-                          onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                          className="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          aria-label="Edit full name"
-                        />
-                      ) : (
-                        <p className="text-gray-800">{profile.name}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    {isEditing.name ? (
-                      <button
-                        onClick={() => handleSave("name", profile.name)}
-                        className="text-green-600 hover:text-green-700"
-                        aria-label="Save name"
-                      >
-                        <Save className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setIsEditing({ ...isEditing, name: true })}
-                        className="text-blue-600 hover:text-blue-700"
-                        aria-label="Edit name"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Phone className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Mobile Number</label>
-                      {isEditing.mobile ? (
-                        <input
-                          type="tel"
-                          value={profile.mobile}
-                          onChange={(e) => setProfile({ ...profile, mobile: e.target.value })}
-                          placeholder="+94xxxxxxxxx or 07xxxxxxxx"
-                          className="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          aria-label="Edit mobile number"
-                        />
-                      ) : (
-                        <p className="text-gray-800">{profile.mobile || "No mobile number set"}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    {isEditing.mobile ? (
-                      <button
-                        onClick={() => handleSave("mobile", profile.mobile)}
-                        className="text-green-600 hover:text-green-700"
-                        aria-label="Save mobile number"
-                      >
-                        <Save className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setIsEditing({ ...isEditing, mobile: true })}
-                        className="text-blue-600 hover:text-blue-700"
-                        aria-label="Edit mobile number"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Lock className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Password</label>
-                      <p className="text-gray-800">••••••••</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowPasswordChange(true)}
-                    className="text-blue-600 hover:text-blue-700"
-                    aria-label="Edit password"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
+              <div className="text-white">
+                <h2 className="text-3xl font-bold mb-2">{user?.name}</h2>
+                <p className="text-blue-100 mb-2">{user?.email}</p>
+                <div className="flex items-center gap-2">
+                  <span className="bg-white/20 backdrop-blur-sm text-white text-sm px-3 py-1 rounded-full border border-white/30">
+                    {user?.role}
+                  </span>
+                  <span className="bg-green-500/20 backdrop-blur-sm text-green-100 text-sm px-3 py-1 rounded-full border border-green-300/30 flex items-center gap-1">
+                    <CheckCircle size={14} />
+                    Verified
+                  </span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="bg-gradient-to-r from-green-600 to-teal-600 px-8 py-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <MapPin className="w-6 h-6 text-white" />
-                  <h3 className="text-xl font-bold text-white">Delivery Addresses</h3>
+          {/* Navigation Tabs */}
+          <div className="flex border-b border-slate-200/50 bg-white/50 backdrop-blur-sm">
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`px-6 py-4 font-medium transition-all ${activeTab === 'profile'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <User size={16} />
+                Profile
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('addresses')}
+              className={`px-6 py-4 font-medium transition-all ${activeTab === 'addresses'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <MapPin size={16} />
+                Addresses
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Alert Messages */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3 shadow-sm">
+            <AlertCircle size={20} className="text-red-500" />
+            <div>
+              <p className="font-medium">Error</p>
+              <p className="text-sm">{error}</p>
+            </div>
+            <button onClick={() => setError('')} className="ml-auto text-red-400 hover:text-red-600">
+              <X size={18} />
+            </button>
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3 shadow-sm">
+            <CheckCircle size={20} className="text-green-500" />
+            <div>
+              <p className="font-medium">Success</p>
+              <p className="text-sm">{success}</p>
+            </div>
+            <button onClick={() => setSuccess('')} className="ml-auto text-green-400 hover:text-green-600">
+              <X size={18} />
+            </button>
+          </div>
+        )}
+
+        {/* Profile Tab */}
+        {activeTab === 'profile' && (
+          <div className="space-y-6">
+            {/* Profile Information */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Profile Information</h3>
+                  <p className="text-slate-600 mt-1">Update your personal information</p>
                 </div>
                 <button
-                  onClick={() => setShowAddAddress(true)}
-                  className="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center space-x-2"
-                  aria-label="Add new address"
+                  onClick={() => setEditMode(!editMode)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${editMode 
+                      ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Address</span>
+                  {editMode ? <X size={16} /> : <Edit3 size={16} />}
+                  {editMode ? 'Cancel' : 'Edit Profile'}
                 </button>
               </div>
-            </div>
-            <div className="p-8">
-              {Array.isArray(addresses) && addresses.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <MapPin className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p>No addresses added yet. Add your first address to get started!</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">Full Name</label>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      value={profileForm.name}
+                      onChange={(e) => setProfileForm({...profileForm, name: e.target.value})}
+                      className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/50 backdrop-blur-sm"
+                      placeholder="Enter your full name"
+                    />
+                  ) : (
+                    <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-200">
+                      <p className="text-slate-900 font-medium">{user?.name || 'Not provided'}</p>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                (addresses || [])
-                  .filter((addr) => addr && addr.label && addr.address)
-                  .map((address) => (
-                    <div
-                      key={address._id}
-                      className={`p-4 border rounded-lg mb-4 ${
-                        address.isDefault ? "border-green-500 bg-green-50" : "border-gray-200"
-                      }`}
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">Mobile Number</label>
+                  {editMode ? (
+                    <input
+                      type="tel"
+                      value={profileForm.mobile}
+                      onChange={(e) => setProfileForm({...profileForm, mobile: e.target.value})}
+                      className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/50 backdrop-blur-sm"
+                      placeholder="Enter your mobile number"
+                    />
+                  ) : (
+                    <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-200">
+                      <p className="text-slate-900 font-medium">{user?.mobile || 'Not provided'}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">Email Address</label>
+                  <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-200">
+                    <p className="text-slate-900 font-medium">{user?.email}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">Role</label>
+                  <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-200">
+                    <p className="text-slate-900 font-medium capitalize">{user?.role}</p>
+                  </div>
+                </div>
+              </div>
+
+              {editMode && (
+                <div className="mt-8 flex gap-3">
+                  <button
+                    onClick={updateProfile}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    <Save size={16} />
+                    Save Changes
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Password Section */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Password & Security</h3>
+                  <p className="text-slate-600 mt-1">Manage your account security</p>
+                </div>
+                <button
+                  onClick={() => setShowPasswordForm(!showPasswordForm)}
+                  className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-medium"
+                >
+                  <Shield size={16} />
+                  {showPasswordForm ? 'Cancel' : 'Change Password'}
+                </button>
+              </div>
+
+              {showPasswordForm && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-3">Current Password</label>
+                    <div className="relative">
+                      <input
+                        type={passwordForm.showCurrentPassword ? 'text' : 'password'}
+                        value={passwordForm.currentPassword}
+                        onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                        className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/50 backdrop-blur-sm pr-12"
+                        placeholder="Enter current password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPasswordForm({...passwordForm, showCurrentPassword: !passwordForm.showCurrentPassword})}
+                        className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
+                      >
+                        {passwordForm.showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-3">New Password</label>
+                    <div className="relative">
+                      <input
+                        type={passwordForm.showNewPassword ? 'text' : 'password'}
+                        value={passwordForm.newPassword}
+                        onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                        className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/50 backdrop-blur-sm pr-12"
+                        placeholder="Enter new password (min 6 characters)"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPasswordForm({...passwordForm, showNewPassword: !passwordForm.showNewPassword})}
+                        className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
+                      >
+                        {passwordForm.showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-3">Confirm New Password</label>
+                    <div className="relative">
+                      <input
+                        type={passwordForm.showConfirmPassword ? 'text' : 'password'}
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                        className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/50 backdrop-blur-sm pr-12"
+                        placeholder="Confirm new password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPasswordForm({...passwordForm, showConfirmPassword: !passwordForm.showConfirmPassword})}
+                        className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
+                      >
+                        {passwordForm.showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={changePassword}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Update Password
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Addresses Tab */}
+        {activeTab === 'addresses' && (
+          <div className="space-y-6">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Saved Addresses</h3>
+                  <p className="text-slate-600 mt-1">Manage your delivery addresses</p>
+                </div>
+                <button
+                  onClick={() => setShowAddressForm(!showAddressForm)}
+                  className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                >
+                  <Plus size={16} />
+                  Add New Address
+                </button>
+              </div>
+
+              {/* Add Address Form */}
+              {showAddressForm && (
+                <div className="mb-8 p-6 bg-slate-50/50 rounded-xl border border-slate-200">
+                  <h4 className="font-semibold text-slate-900 mb-6">Add New Address</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-3">Address Type</label>
+                      <select
+                        value={addressForm.label}
+                        onChange={(e) => setAddressForm({...addressForm, label: e.target.value})}
+                        className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/50 backdrop-blur-sm"
+                      >
+                        {validAddressLabels.map(label => (
+                          <option key={label} value={label}>
+                            {getAddressLabelDisplay(label)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-3">Address *</label>
+                      <input
+                        type="text"
+                        value={addressForm.address}
+                        onChange={(e) => setAddressForm({...addressForm, address: e.target.value})}
+                        className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/50 backdrop-blur-sm"
+                        placeholder="Enter full address"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-3">Latitude (optional)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={addressForm.lat}
+                        onChange={(e) => setAddressForm({...addressForm, lat: e.target.value})}
+                        className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/50 backdrop-blur-sm"
+                        placeholder="Enter latitude (-90 to 90)"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-3">Longitude (optional)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={addressForm.lng}
+                        onChange={(e) => setAddressForm({...addressForm, lng: e.target.value})}
+                        className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/50 backdrop-blur-sm"
+                        placeholder="Enter longitude (-180 to 180)"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={addressForm.isDefault}
+                        onChange={(e) => setAddressForm({...addressForm, isDefault: e.target.checked})}
+                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-slate-700">Set as default address</span>
+                    </label>
+                  </div>
+
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      onClick={addAddress}
+                      className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h4 className="font-semibold text-gray-800">{address.label}</h4>
-                            {address.isDefault && (
-                              <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                                Default
-                              </span>
+                      Add Address
+                    </button>
+                    <button
+                      onClick={() => setShowAddressForm(false)}
+                      className="bg-slate-100 text-slate-700 px-6 py-3 rounded-xl hover:bg-slate-200 transition-colors font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Addresses List */}
+              <div className="space-y-4">
+                {user?.addresses?.length > 0 ? (
+                  user.addresses.map((address, index) => (
+                    <div key={address._id || index} className="bg-slate-50/50 rounded-xl border border-slate-200 p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4">
+                          <div className="mt-1">
+                            {getAddressIcon(address.label)}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-semibold text-slate-900 capitalize">
+                                {getAddressLabelDisplay(address.label)}
+                              </h4>
+                              {address.isDefault && (
+                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                                  <Star size={12} />
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-slate-600 mb-2">{address.address}</p>
+                            {(address.lat || address.lng) && (
+                              <p className="text-sm text-slate-500">
+                                Coordinates: {address.lat || 'N/A'}, {address.lng || 'N/A'}
+                              </p>
                             )}
                           </div>
-                          <p className="text-gray-600 mt-1">{address.address}</p>
-                          <p className="text-gray-600 text-sm">
-                            Lat: {address.lat.toFixed(6)}, Lng: {address.lng.toFixed(6)}
-                          </p>
                         </div>
-                        <div className="flex space-x-2">
+                        <div className="flex items-center gap-2">
                           {!address.isDefault && (
                             <button
                               onClick={() => setDefaultAddress(address._id)}
-                              className="text-green-600 hover:text-green-700 text-sm"
-                              aria-label={`Set ${address.label} as default address`}
+                              className="text-blue-600 hover:text-blue-800 transition-colors text-sm font-medium"
                             >
                               Set Default
                             </button>
                           )}
                           <button
-                            onClick={() => !address.isDefault && deleteAddress(address._id)}
-                            className={`text-red-600 hover:text-red-700 ${address.isDefault ? "opacity-50 cursor-not-allowed" : ""}`}
-                            aria-label={`Delete ${address.label} address`}
-                            disabled={address.isDefault}
+                            onClick={() => deleteAddress(address._id)}
+                            className="text-red-600 hover:text-red-800 transition-colors p-1"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
                     </div>
                   ))
-              )}
+                ) : (
+                  <div className="text-center py-12 text-slate-500">
+                    <MapPin size={48} className="mx-auto mb-4 text-slate-300" />
+                    <p className="text-lg font-medium">No addresses saved yet</p>
+                    <p className="text-sm mt-2">Add your first address to get started</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-
-          {/* Password Change Modal */}
-          {showPasswordChange && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-                <h3 className="text-lg font-semibold mb-4">Change Password</h3>
-                <div className="space-y-4">
-                  <input
-                    type="password"
-                    placeholder="Current Password"
-                    value={passwordData.currentPassword}
-                    onChange={(e) =>
-                      setPasswordData({ ...passwordData, currentPassword: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    aria-label="Current password"
-                  />
-                  <input
-                    type="password"
-                    placeholder="New Password"
-                    value={passwordData.newPassword}
-                    onChange={(e) =>
-                      setPasswordData({ ...passwordData, newPassword: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    aria-label="New password"
-                  />
-                  <input
-                    type="password"
-                    placeholder="Confirm New Password"
-                    value={passwordData.confirmPassword}
-                    onChange={(e) =>
-                      setPasswordData({ ...passwordData, confirmPassword: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    aria-label="Confirm new password"
-                  />
-                </div>
-                <div className="flex space-x-3 mt-6">
-                  <button
-                    onClick={() => setShowPasswordChange(false)}
-                    className="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                    aria-label="Cancel password change"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handlePasswordChange}
-                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    aria-label="Update password"
-                  >
-                    Update Password
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Add Address Modal */}
-          {showAddAddress && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
-                <div className="p-6 border-b">
-                  <h3 className="text-lg font-semibold">Add New Address</h3>
-                </div>
-                <div className="p-6">
-                  <div className="space-y-4 mb-6">
-                    <input
-                      type="text"
-                      placeholder="Address Label (e.g., Home, Office)"
-                      value={newAddress.label}
-                      onChange={(e) => setNewAddress({ ...newAddress, label: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      aria-label="Address label"
-                    />
-                    <div className="flex space-x-3">
-                      <button
-                        onClick={getCurrentLocation}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                        aria-label="Use current location"
-                        disabled={!isMapLoaded}
-                      >
-                        <Navigation className="w-4 h-4" />
-                        <span>Use Current Location</span>
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Click on the map to select a location or use your current location
-                    </p>
-                  </div>
-                  <div
-                    ref={mapRef}
-                    className="w-full h-96 border border-gray-300 rounded-lg mb-4"
-                    style={{ minHeight: "400px", minWidth: "100%" }}
-                  >
-                    {!isMapLoaded && (
-                      <div className="flex items-center justify-center h-full">
-                        <p className="text-gray-500">Loading map...</p>
-                      </div>
-                    )}
-                  </div>
-                  {selectedLocation && (
-                    <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                      <p className="text-sm text-gray-600">Selected Location:</p>
-                      <p className="font-medium">
-                        {newAddress.address}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                <div className="p-6 border-t flex space-x-3">
-                  <button
-                    onClick={() => {
-                      setShowAddAddress(false);
-                      setSelectedLocation(null);
-                      setNewAddress({ label: "", address: "", lat: null, lng: null });
-                      setErrorMessage("");
-                    }}
-                    className="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                    aria-label="Cancel address addition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={addAddress}
-                    disabled={!newAddress.label || !selectedLocation}
-                    className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                    aria-label="Add address"
-                  >
-                    Add Address
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
+    </div>
     </div>
   );
 };

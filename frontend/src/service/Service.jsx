@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Star, Check, DollarSign, Package, Shirt, Droplet, Settings, X } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
-
 import L from 'leaflet';
 import Navbar from '../common/navbar/Navbar';
 import Footer from '../home/footer/Footer';
@@ -10,7 +9,10 @@ import ServiceSection1 from './service-section1/ServiceSection1';
 import ServiceSection2 from './service-section2/ServiceSection2';
 import ServiceSection3 from './service-section3/ServiceSection3';
 import ServiceSection4 from './service-section4/ServiceSection4';
-import { UserModel } from '../reg/UserModel'; // Import UserModel
+import { UserModel } from '../reg/UserModel';
+
+// Import Leaflet CSS to ensure proper map styling
+import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -274,6 +276,8 @@ export default function LaundryServicePage() {
     useEffect(() => {
       map.setMaxBounds(sriLankaBounds);
       map.fitBounds(sriLankaBounds);
+      // Prevent zooming out too far
+      map.setMinZoom(7);
     }, [map]);
     return null;
   }
@@ -295,6 +299,11 @@ export default function LaundryServicePage() {
               ...prev,
               location: { lat: latitude, lng: longitude }
             }));
+            // Center map on user's location
+            const map = document.querySelector('.leaflet-container')?.__leaflet_map__;
+            if (map) {
+              map.setView([latitude, longitude], 13);
+            }
           } else {
             setGeolocationError('Your current location is outside Sri Lanka. Please select a location within Sri Lanka.');
           }
@@ -519,87 +528,96 @@ export default function LaundryServicePage() {
       
       {/* Popup Form */}
       {showPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Book {selectedService?.name}</h2>
-              <button onClick={() => setShowPopup(false)} className="text-gray-500 hover:text-gray-700">
+              <h2 className="text-3xl font-bold text-gray-900">Book {selectedService?.name}</h2>
+              <button 
+                onClick={() => setShowPopup(false)} 
+                className="text-gray-500 h-10 w-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition"
+                aria-label="Close"
+              >
                 <X size={24} />
               </button>
             </div>
 
             {formError && (
-              <div className="bg-red-50 p-3 rounded-lg mb-4 text-red-600 text-sm">
-                {formError}
+              <div className="bg-red-100 border-l-4 border-red-500 p-4 rounded-lg mb-6">
+                <p className="text-red-700 text-sm font-medium">{formError}</p>
               </div>
             )}
 
             {geolocationError && (
-              <div className="bg-yellow-50 p-3 rounded-lg mb-4 text-yellow-600 text-sm">
-                {geolocationError}
+              <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-lg mb-6">
+                <p className="text-yellow-700 text-sm font-medium">{geolocationError}</p>
               </div>
             )}
 
-            <form onSubmit={handleFormSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <form onSubmit={handleFormSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">First Name <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                     required
+                    placeholder="Enter your first name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Last Name <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                     required
+                    placeholder="Enter your last name"
                   />
                 </div>
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email <span className="text-red-500">*</span></label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-gray-100"
                   required
                   disabled={!!user}
+                  placeholder="Enter your email"
                 />
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone <span className="text-red-500">*</span></label>
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   required
+                  placeholder="Enter your 10-digit phone number"
                 />
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select Location on Map *</label>
-                <div className="h-64 w-full rounded-lg overflow-hidden">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Select Location on Map <span className="text-red-500">*</span></label>
+                <div className="h-80 w-full rounded-lg overflow-hidden border border-gray-200 shadow-sm">
                   <MapContainer
                     center={[formData.location.lat, formData.location.lng]}
                     zoom={13}
                     style={{ height: '100%', width: '100%' }}
                     maxBounds={sriLankaBounds}
                     maxBoundsViscosity={1.0}
+                    className="leaflet-container"
                   >
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -610,74 +628,83 @@ export default function LaundryServicePage() {
                     <MapBounds />
                   </MapContainer>
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Selected: Lat {formData.location.lat.toFixed(4)}, Lng {formData.location.lng.toFixed(4)}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleGetCurrentLocation}
-                  className="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  Use My Current Location
-                </button>
+                <div className="flex justify-between items-center mt-2">
+                  <p className="text-sm text-gray-600">
+                    Selected: Lat {formData.location.lat.toFixed(4)}, Lng {formData.location.lng.toFixed(4)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleGetCurrentLocation}
+                    className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>Use Current Location</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Address <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   required
+                  placeholder="Enter your address"
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">City <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                     required
+                    placeholder="Enter your city"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Postal Code</label>
                   <input
                     type="text"
                     name="postalCode"
                     value={formData.postalCode}
                     onChange={handleInputChange}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    placeholder="Enter your postal code"
                   />
                 </div>
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Date *</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Preferred Date <span className="text-red-500">*</span></label>
                 <input
                   type="date"
                   name="preferredDate"
                   value={formData.preferredDate}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   required
                   min={new Date().toISOString().split('T')[0]}
                 />
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Time</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Preferred Time</label>
                 <select
                   name="preferredTime"
                   value={formData.preferredTime}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 >
                   <option value="">Select a time</option>
                   <option value="Morning">Morning (9 AM - 12 PM)</option>
@@ -686,62 +713,64 @@ export default function LaundryServicePage() {
                 </select>
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Avarage Weight of your laundry (kg) *</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Average Weight of Laundry (kg) <span className="text-red-500">*</span></label>
                 <input
                   type="number"
                   name="weight"
                   value={formData.weight}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   required
                   min="0"
                   step="0.1"
+                  placeholder="Enter weight in kg"
                 />
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Add-Ons</label>
-                <div className="space-y-2">
-                  <label className="flex items-center">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Add-Ons</label>
+                <div className="space-y-3">
+                  <label className="flex items-center space-x-2">
                     <input
                       type="checkbox"
                       checked={formData.addOns.includes('Premium Care')}
                       onChange={() => handleAddOnChange('Premium Care')}
-                      className="mr-2"
+                      className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    Premium Care (+Rs 50)
+                    <span className="text-gray-700">Premium Care (+Rs 50)</span>
                   </label>
-                  <label className="flex items-center">
+                  <label className="flex items-center space-x-2">
                     <input
                       type="checkbox"
                       checked={formData.addOns.includes('Fragrance')}
                       onChange={() => handleAddOnChange('Fragrance')}
-                      className="mr-2"
+                      className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    Fragrance (+Rs 300 per kg)
+                    <span className="text-gray-700">Fragrance (+Rs 300 per kg)</span>
                   </label>
                 </div>
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Special Instructions</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Special Instructions</label>
                 <textarea
                   name="specialInstructions"
                   value={formData.specialInstructions}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   rows="4"
+                  placeholder="Any special instructions for your order?"
                 ></textarea>
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Method</label>
                 <select
                   name="paymentMethod"
                   value={formData.paymentMethod}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 >
                   <option value="cash">Cash on Delivery</option>
                   <option value="card">Credit/Debit Card</option>
@@ -749,22 +778,22 @@ export default function LaundryServicePage() {
                 </select>
               </div>
 
-              <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                <p className="text-lg font-semibold text-gray-800">Avarage Total Price : Rs {calculateTotalAmount()}</p>
-                <p className="text-sm text-gray-500">This is an estimate based on the provided weight and selected add-ons.it can be change actual weight</p>
+              <div className="bg-gray-100 p-4 rounded-lg border border-gray-200">
+                <p className="text-lg font-semibold text-gray-800">Estimated Total: Rs {calculateTotalAmount()}</p>
+                <p className="text-sm text-gray-600 mt-1">This is an estimate based on the provided weight and selected add-ons. Actual price may vary based on final weight.</p>
               </div>
 
-              <div className="flex justify-end space-x-3">
+              <div className="flex justify-end space-x-4">
                 <button
                   type="button"
                   onClick={() => setShowPopup(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50"
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
                 >
                   Submit Order
                 </button>

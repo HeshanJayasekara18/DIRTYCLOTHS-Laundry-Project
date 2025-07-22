@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const router = express.Router();
 const {
+  getUserProfile,
   updateUser,
   uploadProfileImage,
   changePassword,
@@ -22,10 +23,10 @@ router.post("/register", register);
 router.post("/login", login);
 
 // Protected user profile routes
-router.get("/user", verifyToken, updateUser); // Get user data
+router.get("/user", verifyToken, getUserProfile); // Get user data
 router.put("/user", verifyToken, updateUser); // Update user profile (name, mobile)
 router.post("/user/profile-image", verifyToken, upload.single("profileImage"), uploadProfileImage); // Upload profile image
-router.put("/user/password", verifyToken, changePassword); // Change password
+router.put("/change-password", verifyToken, changePassword); // Change password
 router.post("/user/addresses", verifyToken, addAddress); // Add address
 router.delete("/user/addresses/:id", verifyToken, deleteAddress); // Delete address
 router.put("/user/addresses/:id/default", verifyToken, setDefaultAddress); // Set default address
@@ -34,10 +35,11 @@ router.put("/user/addresses/:id/default", verifyToken, setDefaultAddress); // Se
 router.get('/debug-user/:email', async (req, res) => {
   try {
     const user = await User.findOne({ email: req.params.email });
-    res.json(user ? { 
-      email: user.email, 
+    res.json(user ? {
+      email: user.email,
       role: user.role,
-      name: user.name 
+      name: user.name,
+      addresses: user.addresses || []
     } : { message: 'User not found' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -59,7 +61,7 @@ router.post('/create-admin', async (req, res) => {
       if (existingAdmin.role !== 'admin') {
         existingAdmin.role = 'admin';
         await existingAdmin.save();
-        return res.json({ 
+        return res.json({
           message: 'Updated existing user role to admin',
           admin: {
             email: existingAdmin.email,
@@ -69,7 +71,7 @@ router.post('/create-admin', async (req, res) => {
         });
       }
       
-      return res.json({ 
+      return res.json({
         message: 'Admin user already exists',
         admin: {
           email: existingAdmin.email,
@@ -86,12 +88,13 @@ router.post('/create-admin', async (req, res) => {
       email: adminEmail,
       password: hashedPassword,
       name: adminName,
-      role: 'admin'
+      role: 'admin',
+      addresses: []
     });
 
     await adminUser.save();
     
-    res.json({ 
+    res.json({
       message: 'Admin user created successfully!',
       admin: {
         email: adminUser.email,
@@ -99,12 +102,10 @@ router.post('/create-admin', async (req, res) => {
         role: adminUser.role
       }
     });
-
   } catch (error) {
     console.error('Error creating admin user:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Export only the router
 module.exports = router;
