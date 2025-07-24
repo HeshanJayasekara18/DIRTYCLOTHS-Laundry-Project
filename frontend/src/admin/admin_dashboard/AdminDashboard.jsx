@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit3, Trash2, Package, DollarSign, Clock, Users, Search, Filter, MoreVertical, CheckCircle, XCircle } from 'lucide-react';
-import { UserModel } from '../../reg/UserModel';
-import { useNavigate } from "react-router-dom";
+
+
+import AdminHeader from '../admin_header/AdminHeader';
 
 const LaundryAdminPage = () => {
   const [packages, setPackages] = useState([]);
@@ -11,14 +12,11 @@ const LaundryAdminPage = () => {
   const [editingPackage, setEditingPackage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
-  const navigate = useNavigate();
+ 
 
   const API_BASE_URL = 'http://localhost:5000/api';
 
-  const handleLogout = () => {
-    UserModel.clearSession();
-    navigate("/login");
-  };
+  
 
   // Fetch orders from API
   const fetchOrders = async () => {
@@ -457,31 +455,7 @@ const LaundryAdminPage = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Laundry Admin Dashboard</h1>
-              <p className="text-gray-600 mt-1 text-sm">Manage your laundry service packages with ease</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors duration-200 flex items-center space-x-2 shadow-md hover:shadow-lg"
-              >
-                <Plus size={20} />
-                <span>Add Package</span>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium"
-              >
-                Log out
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AdminHeader />
 
       {/* Error Display */}
       {error && (

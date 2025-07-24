@@ -10,6 +10,7 @@ import LaundryOrderForm from './service/BookingForm';
 import PackageAddForm from './admin/packageAddForm/PackageAddForm';
 import Admin from './admin/Admin';
 import AdminDashboard from './admin/admin_dashboard/AdminDashboard';
+import AdminOrder from './admin/admin_order/AdminOrder';
 import Register from './reg/Register';
 import Login from './reg/Login';
 import PreServiceDetails from './service/pre-service-details/PreServiceDetails';
@@ -46,6 +47,15 @@ function App() {
             <AdminProtectedRoute>
               <AdminRoutes />
             </AdminProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="admin/order*" 
+          element={
+            
+              <AdminOrder />
+            
           } 
         />
 
