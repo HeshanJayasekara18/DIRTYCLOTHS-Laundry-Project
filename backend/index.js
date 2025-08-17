@@ -6,6 +6,7 @@ const connectDB = require("./db/db");
 const OrderRoute = require("./route/OrderRoute");
 const PackageRoute = require("./route/PackageRoute");
 const authRoutes = require("./route/auth");
+const ContactRoute = require("./route/ContactRoute");
 
 dotenv.config(); // Load environment variables
 
@@ -31,6 +32,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'Uploads')));
 app.use("/api/order", OrderRoute);
 app.use("/api/package", PackageRoute);
 app.use("/api/auth", authRoutes);
+app.use("/api/contact", ContactRoute);
 
 // Root Route
 app.get("/", (req, res) => {

@@ -26,6 +26,7 @@ const ContactUS = () => {
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
+  const [isLoading, setIsLoading] = useState(false); // Added loading state
 
   useEffect(() => {
     setIsVisible(true);
@@ -38,20 +39,71 @@ const ContactUS = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      alert('Please enter your name');
+      return false;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      alert('Please enter a valid email address');
+      return false;
+    }
+    
+    if (!formData.message.trim()) {
+      alert('Please enter your message');
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulate form submission
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        service: '',
-        message: ''
+    
+    if (!validateForm()) return;
+    
+    setIsLoading(true);
+    
+    // Generate unique contactID
+    const contactID = `contact_${Date.now()}`;
+    
+    const dataToSend = {
+      ...formData,
+      contactID
+    };
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataToSend),
       });
-    }, 3000);
+
+      if (!response.ok) {
+        throw new Error('Failed to submit form');
+      }
+
+      setIsSubmitted(true);
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          service: '',
+          message: ''
+        });
+      }, 3000);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Error submitting form. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const contactInfo = [
@@ -96,7 +148,7 @@ const ContactUS = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <Navbar />
+      <Navbar />
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
         <div className="absolute inset-0 bg-black opacity-20"></div>
@@ -173,7 +225,7 @@ const ContactUS = () => {
                   Tell us about your laundry needs and we'll get back to you faster than a Midigama sunset!
                 </p>
 
-{isSubmitted ? (
+                {isSubmitted ? (
                   <div className="text-center py-12">
                     <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4 animate-bounce" />
                     <h3 className="text-2xl font-bold text-green-600 mb-2">Message Sent!</h3>
@@ -246,10 +298,25 @@ const ContactUS = () => {
 
                     <button
                       onClick={handleSubmit}
-                      className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-4 px-6 rounded-xl hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center"
+                      disabled={isLoading}
+                      className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-4 px-6 rounded-xl hover:from-indigo-700 hover:to-purple-700 transform transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center ${
+                        isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:scale-105'
+                      }`}
                     >
-                      <Send className="w-5 h-5 mr-2" />
-                      Send Message
+                      {isLoading ? (
+                        <span className="flex items-center">
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Sending...
+                        </span>
+                      ) : (
+                        <>
+                          <Send className="w-5 h-5 mr-2" />
+                          Send Message
+                        </>
+                      )}
                     </button>
                   </div>
                 )}
