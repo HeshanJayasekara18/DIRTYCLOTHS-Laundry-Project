@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 // Import your assets - you'll need to adjust paths based on your project structure
 import laundryIcon from "../../images/laundry-icon.png"; 
@@ -6,11 +7,16 @@ import laundrysplash from "../../images/laundry-splash.gif";
 
 export default function HeroSection() {
   const [isLoaded, setIsLoaded] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Set loaded state to true once component mounts
     setIsLoaded(true);
   }, []);
+
+  const handleOrderNow = () => {
+    navigate("/services");
+  };
 
   return (
     <section id="section1" className="relative overflow-hidden min-h-[600px] md:min-h-[90vh]">
@@ -45,8 +51,11 @@ export default function HeroSection() {
               <p>Let us handle the dirty work—so you don't have to.</p>
             </div>
             
-            <button className="bg-lime-400 hover:bg-lime-500 text-black font-bold py-3 px-8 rounded-full text-lg transition-all duration-300 flex items-center shadow-lg">
-              Order Now
+            <button 
+              onClick={handleOrderNow}
+              className="bg-lime-400 hover:bg-lime-500 text-black font-bold py-3 px-8 rounded-full text-lg transition-all duration-300 flex items-center shadow-lg"
+            >
+              Wash Now
               <img 
                 src={laundryIcon} 
                 alt="Laundry" 

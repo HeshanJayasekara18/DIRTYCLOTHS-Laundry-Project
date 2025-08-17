@@ -6,13 +6,13 @@ import Section3 from './section3/Section3';
 import Section4 from './section4/Section4';
 import Section5 from './section5/Section5';
 import Footer from './footer/Footer';
- import TransparentWaterEffect from './TransparentWaterEffect';
+
 
 function Home() {
     return (
         <div>
             <Navbar />
-            <TransparentWaterEffect />
+            
             <Section1 />
             <Section2 />
             <Section3 />
