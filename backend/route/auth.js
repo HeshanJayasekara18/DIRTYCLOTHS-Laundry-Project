@@ -57,7 +57,7 @@ router.get("/debug-user/:email", async (req, res) => {
 // ------------------------ CREATE OR UPDATE ADMIN ROUTE ------------------------
 router.post("/create-admin", verifyToken, async (req, res) => {
   try {
-    // Only allow existing admins to create/update another admin
+   
     if (req.user.role !== "admin") {
       return res.status(403).json({ message: "Not allowed to create admin" });
     }

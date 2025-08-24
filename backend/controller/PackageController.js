@@ -3,7 +3,7 @@ const Package = require('../models/Package');
 
 const getAllPackage = async (req, res) => {
     try {
-        const packages = await Package.find(); // Changed variable name from 'package' to 'packages'
+        const packages = await Package.find();
         res.status(200).json(packages);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching packages', error: error.message });
