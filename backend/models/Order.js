@@ -77,7 +77,7 @@ const orderSchema = new mongoose.Schema({
   },
   userEmail: {
     type: String,
-    required: true // Add field to store logged-in user's email
+    required: true 
   },
   status: {
     type: String,

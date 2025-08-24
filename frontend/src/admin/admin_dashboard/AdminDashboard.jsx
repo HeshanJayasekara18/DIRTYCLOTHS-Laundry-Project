@@ -23,7 +23,13 @@ const LaundryAdminPage = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch(`${API_BASE_URL}/order`);
+      const token = localStorage.getItem("token"); // Get JWT token from localStorage
+      const response = await fetch(`${API_BASE_URL}/order`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         console.log('Orders fetched:', data);

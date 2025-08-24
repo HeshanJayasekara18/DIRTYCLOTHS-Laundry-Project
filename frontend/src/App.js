@@ -15,6 +15,9 @@ import Register from './reg/Register';
 import Login from './reg/Login';
 import PreServiceDetails from './service/pre-service-details/PreServiceDetails';
 import { AdminProtectedRoute, ProtectedRoute } from './admin/AdminProtectedRoute';
+import ScrollToTop from "./ScrollToTop";
+import AdminMessage from './admin/admin_message/AdminMessagesPage';
+
 
 function App() {
   useEffect(() => {
@@ -31,7 +34,9 @@ function App() {
   }, []);
 
   return (
+    
     <BrowserRouter>
+    <ScrollToTop />
       <Routes>
         {/* Public pages */}
         <Route path="/" element={<Navigate to="/home" replace />} />
@@ -86,6 +91,16 @@ function App() {
             </AdminProtectedRoute>
           }
         />
+
+        <Route
+          path="/admin/message"
+          element={
+            <AdminProtectedRoute>
+              <AdminMessage />
+            </AdminProtectedRoute>
+          }
+        />
+
         <Route
           path="/admin/package-add"
           element={

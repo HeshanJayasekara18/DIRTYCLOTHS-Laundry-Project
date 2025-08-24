@@ -1,29 +1,47 @@
 import axios from "axios";
 
 const UserModel = {
-  register: async (email, password, name) => {
+  register: async (email, password, name, mobile) => {
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/register", {
-        email,
+      // Log the data being sent for debugging
+      const registrationData = {
+        email: email.trim(),
         password,
-        name
-      });
+        name: name.trim(),
+        mobile // <-- Add this
+      };
+      
+      console.log("Sending registration data:", registrationData);
+      
+      // Validate data before sending
+      if (!registrationData.email || !registrationData.password || !registrationData.name || !registrationData.mobile) {
+        throw new Error("All fields are required");
+      }
+      
+      const response = await axios.post("http://localhost:5000/api/auth/register", registrationData);
       return response.data;
     } catch (error) {
       console.error("Registration error:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      console.error("Full error:", error);
       throw new Error(error.response?.data?.message || "Registration failed");
     }
   },
 
   login: async (email, password) => {
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/login", {
-        email,
+      const loginData = {
+        email: email.trim(),
         password
-      });
+      };
+      
+      console.log("Sending login data:", { email: loginData.email, password: "[HIDDEN]" });
+      
+      const response = await axios.post("http://localhost:5000/api/auth/login", loginData);
       return response.data;
     } catch (error) {
       console.error("Login error:", error.response?.data);
+      console.error("Error status:", error.response?.status);
       throw new Error(error.response?.data?.message || "Login failed");
     }
   },

@@ -1,4 +1,3 @@
-
 import AdminHeader  from "../admin_header/AdminHeader";
 
 
@@ -20,39 +19,66 @@ const AdminOrder = () => {
     fetchOrders();
   }, []);
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('http://localhost:5000/api/order');
-      const data = await response.json();
-      setOrders(data.orders || data);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      setOrders([]);
-    } finally {
-      setLoading(false);
+const fetchOrders = async () => {
+  try {
+    setLoading(true);
+    const token = localStorage.getItem("token");
+    
+    // Use the new admin endpoint
+    const response = await fetch('http://localhost:5000/api/order/admin/all', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  };
+    
+    const data = await response.json();
+    console.log('Fetched orders:', data); // Debug log
+    
+    // Handle the response structure
+    setOrders(data.orders || data || []);
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    setOrders([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const updateOrderStatus = async (orderId, newStatus) => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/order/${orderId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+const updateOrderStatus = async (orderId, newStatus) => {
+  try {
+    const token = localStorage.getItem("token"); // Add this line
+    
+    const response = await fetch(`http://localhost:5000/api/order/${orderId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`, // Add Authorization header
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: newStatus }),
+    });
 
-      if (response.ok) {
-        setOrders(orders.map(order => 
-          order.orderID === orderId ? { ...order, status: newStatus } : order
-        ));
+    if (response.ok) {
+      // Update local state
+      setOrders(orders.map(order => 
+        order.orderID === orderId ? { ...order, status: newStatus } : order
+      ));
+      
+      // Close modal if open
+      if (selectedOrder && selectedOrder.orderID === orderId) {
+        setSelectedOrder({ ...selectedOrder, status: newStatus });
       }
-    } catch (error) {
-      console.error('Error updating order status:', error);
+    } else {
+      console.error('Failed to update order status');
     }
-  };
+  } catch (error) {
+    console.error('Error updating order status:', error);
+  }
+};
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -129,7 +155,7 @@ const AdminOrder = () => {
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div><span className="text-gray-600">Service:</span> {order.selectedService}</div>
-              <div><span className="text-gray-600">Weight:</span> {order.weight} kg</div>
+              <div><span className="text-gray-600">Avarage Weight:</span> {order.weight} kg</div>
               <div className="flex items-center"><Calendar className="w-4 h-4 mr-1 text-gray-400" />{order.preferredDate}</div>
               <div className="flex items-center"><Clock className="w-4 h-4 mr-1 text-gray-400" />{order.preferredTime || 'Not specified'}</div>
               {order.addOns && order.addOns.length > 0 && (
@@ -155,7 +181,7 @@ const AdminOrder = () => {
               Payment Information
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <div><span className="text-gray-600">Total Amount:</span> <span className="font-semibold">${order.totalAmount}</span></div>
+              <div><span className="text-gray-600">Estimate Amount:</span> <span className="font-semibold">Rs.{order.totalAmount}</span></div>
               <div><span className="text-gray-600">Payment Method:</span> {order.paymentMethod || 'Cash'}</div>
             </div>
           </div>
