@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../common/navbar/Navbar';
 import Footer from '../home/footer/Footer';
-import { CheckCircle, Clock, AlertTriangle, ArrowRight, CheckCircle2, Loader2, Droplets, Wind, WashingMachine, Trash2, X } from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, ArrowRight, CheckCircle2, Loader2, Droplets, Wind, WashingMachine, Trash2,  } from 'lucide-react';
 import { UserModel } from '../reg/UserModel';
 import CancelOrderModal from './CancelOrderModal';
 
@@ -16,7 +16,7 @@ const Orders = () => {
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [selectedOrderStage, setSelectedOrderStage] = useState(null);
+  const [ setSelectedOrderStage] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,8 +32,11 @@ const Orders = () => {
         return;
       }
 
+      // done
+      const API_BASE_URL = process.env.REACT_APP_API_BASE;
+
       try {
-        const res = await fetch('http://localhost:5000/api/order', {
+        const res = await fetch(`${API_BASE_URL}/order`, {
           headers: {
             Authorization: `Bearer ${session.token}`,
             'Content-Type': 'application/json'
@@ -55,13 +58,15 @@ const Orders = () => {
         const now = new Date();
         const active = [];
         const past = [];
+
         data.forEach(order => {
           const createdAt = new Date(order.createdAt);
           const diffHours = (now - createdAt) / (1000 * 60 * 60);
+          
           if (diffHours <= 48) {
             active.push({
               ...order,
-              id: order.orderID,
+              id: order.orderID || order._id, // fallback to _id
               service: order.serviceDetails?.name || 'Unknown Service',
               items: order.items || 0,
               amount: order.totalAmount || 0,
@@ -74,7 +79,7 @@ const Orders = () => {
           } else {
             past.push({
               ...order,
-              id: order.orderID,
+              id: order.orderID || order._id,
               service: order.serviceDetails?.name || 'Unknown Service',
               items: order.items || 0,
               amount: order.totalAmount || 0,
@@ -84,7 +89,9 @@ const Orders = () => {
             });
           }
         });
+
         setOrders({ active, past });
+
       } catch (err) {
         console.error('Error fetching orders:', err);
         setError(err.message || 'Failed to load orders. Please try again.');
@@ -92,49 +99,60 @@ const Orders = () => {
       } finally {
         setLoading(false);
       }
+
     };
     fetchOrders();
   }, [navigate]);
 
-  const handleCancelOrder = async () => {
-    const session = UserModel.getSession();
-    if (!session?.token) {
-      setError('Session expired. Please log in again.');
-      navigate('/login');
-      return;
-    }
-
-    try {
-      const response = await fetch(`http://localhost:5000/api/order/${selectedOrderId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to cancel order');
+    const handleCancelOrder = async () => {
+      const session = UserModel.getSession();
+      if (!session?.token) {
+        setError('Session expired. Please log in again.');
+        navigate('/login');
+        return;
       }
 
-      setOrders({
-        ...orders,
-        active: orders.active.filter((order) => order.id !== selectedOrderId),
-        past: [
-          ...orders.past,
-          {
-            ...orders.active.find((order) => order.id === selectedOrderId),
-            status: 'cancelled',
-            cancellation: new Date().toISOString()
+      if (!selectedOrderId) {
+        setError('No order selected.');
+        return;
+      }
+
+      const API_BASE_URL = process.env.REACT_APP_API_BASE; // Make sure this is set in your frontend .env
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/order/${selectedOrderId}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${session.token}`,
+            'Content-Type': 'application/json'
           }
-        ]
-      });
-      setModalOpen(false);
-    } catch (err) {
-      setError(err.message || 'Failed to cancel order. Please try again.');
-    }
-  };
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to cancel order');
+        }
+
+        // Move order from active to past with cancelled status
+        const cancelledOrder = orders.active.find(order => order.id === selectedOrderId);
+        if (cancelledOrder) {
+          setOrders({
+            active: orders.active.filter(order => order.id !== selectedOrderId),
+            past: [
+              ...orders.past,
+              { ...cancelledOrder, status: 'cancelled', cancellation: new Date().toISOString() }
+            ]
+          });
+        }
+
+        setModalOpen(false);
+        setError('');
+      } catch (err) {
+        console.error('Error cancelling order:', err);
+        setError(err.message || 'Failed to cancel order. Please try again.');
+      }
+    };
+
 
   const openCancelModal = (orderId, stage) => {
     if (stage === 'ready') {

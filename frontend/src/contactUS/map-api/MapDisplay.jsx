@@ -1,4 +1,4 @@
-    import React, { useEffect, useRef, useState } from 'react';
+    import  { useEffect, useRef, useState } from 'react';
     import { MapPin, Navigation, Phone, Clock } from 'lucide-react';
 
     // This component can be imported into your ContactUS component

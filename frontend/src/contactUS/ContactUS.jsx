@@ -74,6 +74,8 @@ const ContactUS = () => {
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
+  
+  const API_BASE_URL = process.env.REACT_APP_API_BASE; // Railway backend URL
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -91,7 +93,7 @@ const ContactUS = () => {
     };
 
     try {
-      const response = await fetch("http://localhost:5000/api/contact/add", {
+      const response = await fetch("http://localhost:5000/api/contact/add" || `${API_BASE_URL}/api/contact/add`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dataToSend),

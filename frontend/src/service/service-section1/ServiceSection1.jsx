@@ -1,7 +1,7 @@
 import React from "react";
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Star, Check, DollarSign, Package, Shirt, Droplet, Settings, X, MapPin, Droplets, Sparkles } from 'lucide-react';
+
+import { Star,Shirt, Droplets, Sparkles } from 'lucide-react';
 
 const ServiceSection1 = () => {
     const [isVisible, setIsVisible] = useState(false);

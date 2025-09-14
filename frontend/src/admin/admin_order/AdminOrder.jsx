@@ -4,7 +4,7 @@ import AdminHeader  from "../admin_header/AdminHeader";
 
 
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Eye, Edit, Trash2, Calendar, MapPin, User, Phone, Mail, Package, Clock, DollarSign } from 'lucide-react';
+import { Search, Filter, Eye, Calendar, MapPin, User, Phone, Mail, Package, Clock, DollarSign } from 'lucide-react';
 
 const AdminOrder = () => {
   const [orders, setOrders] = useState([]);
@@ -19,66 +19,65 @@ const AdminOrder = () => {
     fetchOrders();
   }, []);
 
-const fetchOrders = async () => {
-  try {
-    setLoading(true);
-    const token = localStorage.getItem("token");
-    
-    // Use the new admin endpoint
-    const response = await fetch('http://localhost:5000/api/order/admin/all', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log('Fetched orders:', data); // Debug log
-    
-    // Handle the response structure
-    setOrders(data.orders || data || []);
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-    setOrders([]);
-  } finally {
-    setLoading(false);
-  }
-};
+    const API_BASE_URL = process.env.REACT_APP_API_BASE; 
 
-const updateOrderStatus = async (orderId, newStatus) => {
-  try {
-    const token = localStorage.getItem("token"); // Add this line
-    
-    const response = await fetch(`http://localhost:5000/api/order/${orderId}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`, // Add Authorization header
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ status: newStatus }),
-    });
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("token");
 
-    if (response.ok) {
-      // Update local state
-      setOrders(orders.map(order => 
-        order.orderID === orderId ? { ...order, status: newStatus } : order
-      ));
-      
-      // Close modal if open
-      if (selectedOrder && selectedOrder.orderID === orderId) {
-        setSelectedOrder({ ...selectedOrder, status: newStatus });
+        const response = await fetch(`${API_BASE_URL}/api/order/admin/all`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Fetched orders:', data);
+
+        setOrders(data.orders || data || []);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        setOrders([]);
+      } finally {
+        setLoading(false);
       }
-    } else {
-      console.error('Failed to update order status');
-    }
-  } catch (error) {
-    console.error('Error updating order status:', error);
-  }
-};
+    };
+
+    const updateOrderStatus = async (orderId, newStatus) => {
+      try {
+        const token = localStorage.getItem("token");
+
+        const response = await fetch(`${API_BASE_URL}/api/order/${orderId}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: newStatus }),
+        });
+
+        if (response.ok) {
+          setOrders(orders.map(order => 
+            order.orderID === orderId ? { ...order, status: newStatus } : order
+          ));
+
+          if (selectedOrder && selectedOrder.orderID === orderId) {
+            setSelectedOrder({ ...selectedOrder, status: newStatus });
+          }
+        } else {
+          console.error('Failed to update order status');
+        }
+      } catch (error) {
+        console.error('Error updating order status:', error);
+      }
+    };
+
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 

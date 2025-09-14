@@ -1,5 +1,5 @@
 import Navbar from "../common/navbar/Navbar"
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { Droplets, Heart, Users, Award, MapPin, Clock, Sparkles, Shirt } from 'lucide-react';
 import Footer from '../home/footer/Footer';
 
@@ -7,7 +7,7 @@ import Footer from '../home/footer/Footer';
 
 export default function AboutUS() {
 const [isVisible, setIsVisible] = useState(false);
-  const [activeCard, setActiveCard] = useState(null);
+  const [ setActiveCard] = useState(null);
 
   useEffect(() => {
     setIsVisible(true);

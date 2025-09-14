@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Package, Droplet, Shirt, Settings, ChevronRight, Star, Check } from "lucide-react";
+import { Package, Droplet, Shirt, Settings, ChevronRight, Check } from "lucide-react";
 import Navbar from "../../common/navbar/Navbar";
 import Footer from "../../home/footer/Footer";
 

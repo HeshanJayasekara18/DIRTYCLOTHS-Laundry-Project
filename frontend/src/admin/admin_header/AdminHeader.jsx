@@ -1,12 +1,10 @@
 import { UserModel } from '../../reg/UserModel';
 import { useNavigate } from "react-router-dom";
-import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 
 const AdminHeader = () => {
   const navigate = useNavigate();
-  const [showAddModal, setShowAddModal] = useState(false);
-
+  
   const handleLogout = () => {
     UserModel.clearSession();
     navigate("/login");

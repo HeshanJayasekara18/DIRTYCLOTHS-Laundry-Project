@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit3, Trash2, Package, DollarSign, Clock, Users, Search, Filter, MoreVertical, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit3, Trash2, Package, DollarSign, Clock, Search, CheckCircle, XCircle } from 'lucide-react';
 import { API_BASE_URL } from '../../config'; // Adjust path if needed
 
 
@@ -75,11 +75,7 @@ const LaundryAdminPage = () => {
       });
   }, []);
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.order_id?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
+
 
   const filteredPackages = packages.filter(pkg => {
     const matchesSearch = pkg.package_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

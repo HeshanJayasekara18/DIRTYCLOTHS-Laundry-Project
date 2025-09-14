@@ -25,9 +25,9 @@ L.Icon.Default.mergeOptions({
 export default function LaundryServicePage() {
   const navigate = useNavigate();
   const [selectedService, setSelectedService] = useState(null);
-  const [packages, setPackages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [ setPackages] = useState([]);
+  const [ setLoading] = useState(true);
+  const [ setError] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -145,6 +145,7 @@ export default function LaundryServicePage() {
     return "24-48 hours";
   };
 
+  const API_BASE_URL = process.env.REACT_APP_API_BASE;
   // Fetch packages from backend
   const fetchPackages = async () => {
     try {
@@ -153,7 +154,7 @@ export default function LaundryServicePage() {
       if (!session?.token) {
         throw new Error('No valid session token');
       }
-      const response = await fetch('http://localhost:5000/api/package', {
+      const response = await fetch('http://localhost:5000/api/package' || "${API_BASE_URL}/api/package", {
         headers: {
           'Authorization': `Bearer ${session.token}`
         }
@@ -416,7 +417,7 @@ export default function LaundryServicePage() {
       };
 
       const trySubmitOrder = async (token) => {
-        const response = await fetch('http://localhost:5000/api/order', {
+        const response = await fetch('http://localhost:5000/api/order' || "${API_BASE_URL}/api/order", {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -432,7 +433,7 @@ export default function LaundryServicePage() {
       // Handle 401 error by attempting to refresh token
       if (response.status === 401) {
         console.warn('401 Unauthorized, attempting to refresh token');
-        const refreshResponse = await fetch('http://localhost:5000/api/auth/refresh', {
+        const refreshResponse = await fetch('http://localhost:5000/api/auth/refresh' || "${API_BASE_URL}/api/auth/refresh", {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

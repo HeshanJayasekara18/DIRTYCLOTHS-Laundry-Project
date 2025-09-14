@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
-import laundryIcon from "../../images/laundry-icon.png"; 
-import laundrySplash from "../../images/laundry-splash.gif";
+import  { useState } from "react";
+
 import laundrywash from "../../images/laundrywash.gif";
 import './Section5.css'
 

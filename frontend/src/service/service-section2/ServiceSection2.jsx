@@ -80,11 +80,13 @@ export default function ServiceSection2({ onOrderNow }) {
     return "24-48 hours";
   };
 
+  const API_BASE_URL = process.env.REACT_APP_API_BASE; // e.g., https://dirtycloths-laundry-project-production.up.railway.app
+
   // Fetch packages from backend
   const fetchPackages = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/package');
+      const response = await fetch('http://localhost:5000/api/package'|| `${API_BASE_URL}/api/package` );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
