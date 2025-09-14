@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit3, Trash2, Package, DollarSign, Clock, Users, Search, Filter, MoreVertical, CheckCircle, XCircle } from 'lucide-react';
+import { API_BASE_URL } from '../../config'; // Adjust path if needed
 
 
 import AdminHeader from '../admin_header/AdminHeader';
@@ -14,7 +15,6 @@ const LaundryAdminPage = () => {
   const [error, setError] = useState('');
  
 
-  const API_BASE = "https://dirtycloths-laundry-project-production.up.railway.app";
 
   
 
