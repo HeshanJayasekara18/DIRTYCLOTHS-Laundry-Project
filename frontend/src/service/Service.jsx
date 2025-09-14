@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Star, Check, DollarSign, Package, Shirt, Droplet, Settings, X } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -10,11 +10,8 @@ import ServiceSection2 from './service-section2/ServiceSection2';
 import ServiceSection3 from './service-section3/ServiceSection3';
 import ServiceSection4 from './service-section4/ServiceSection4';
 import { UserModel } from '../reg/UserModel';
-
-// Import Leaflet CSS to ensure proper map styling
 import 'leaflet/dist/leaflet.css';
 
-// Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -25,10 +22,11 @@ L.Icon.Default.mergeOptions({
 export default function LaundryServicePage() {
   const navigate = useNavigate();
   const [selectedService, setSelectedService] = useState(null);
-  const [ setPackages] = useState([]);
-  const [ setLoading] = useState(true);
-  const [ setError] = useState(null);
+  const [packages, setPackages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',

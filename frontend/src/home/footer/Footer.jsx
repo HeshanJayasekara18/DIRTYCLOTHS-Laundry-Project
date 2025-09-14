@@ -1,4 +1,4 @@
-import React from "react";
+import React from "react"; 
 import logo from '../../images/DIRTYCLOTHS.png';
 
 const Footer = () => {
@@ -12,7 +12,8 @@ const Footer = () => {
               src={logo}
               height={200}
               width={300}
-              />
+              alt="DirtyCloths Laundry Logo"   // ✅ Added alt prop
+            />
           </div>
           <p className="text-gray-700 mt-2">
             Your trusted laundry partner in Midigama – fast, tourist-friendly, and eco-conscious service.

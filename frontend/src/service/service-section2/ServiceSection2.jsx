@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Package, Shirt, Droplet, Settings } from 'lucide-react';
 
 export default function ServiceSection2({ onOrderNow }) {
@@ -7,7 +6,10 @@ export default function ServiceSection2({ onOrderNow }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Icon mapping for different package types
+  const API_BASE_URL = process.env.REACT_APP_API_BASE; 
+  // Example: https://dirtycloths-laundry-project-production.up.railway.app
+
+  // Icon mapping
   const getPackageIcon = (packageName) => {
     const name = packageName.toLowerCase();
     if (name.includes('full')) return <Package className="text-blue-500" />;
@@ -17,7 +19,6 @@ export default function ServiceSection2({ onOrderNow }) {
     return <Package className="text-blue-500" />;
   };
 
-  // Color mapping for different package types
   const getPackageColor = (packageName) => {
     const name = packageName.toLowerCase();
     if (name.includes('full')) return "bg-gradient-to-r from-blue-500 to-cyan-400";
@@ -27,7 +28,6 @@ export default function ServiceSection2({ onOrderNow }) {
     return "bg-gradient-to-r from-blue-500 to-cyan-400";
   };
 
-  // Helper function to format price with currency
   const formatPrice = (price) => {
     if (typeof price === 'number') {
       return `Rs ${price}`;
@@ -35,7 +35,6 @@ export default function ServiceSection2({ onOrderNow }) {
     return price || 'N/A';
   };
 
-  // Helper function to get starting price
   const getStartingPrice = (pricing) => {
     if (!pricing) return 'Contact for pricing';
     const prices = [];
@@ -47,11 +46,8 @@ export default function ServiceSection2({ onOrderNow }) {
     return `Starting from Rs ${minPrice}(per 100g)`;
   };
 
-  // Helper function to process features
   const processFeatures = (features) => {
-    if (Array.isArray(features)) {
-      return features;
-    }
+    if (Array.isArray(features)) return features;
     if (typeof features === 'string') {
       return features.split(',').map(f => f.trim()).filter(f => f.length > 0);
     }
@@ -63,7 +59,6 @@ export default function ServiceSection2({ onOrderNow }) {
     ];
   };
 
-  // Helper function to format processing time
   const formatProcessingTime = (packageTime) => {
     if (!packageTime) return "24-48 hours";
     if (typeof packageTime === 'string' && !packageTime.includes('T')) {
@@ -74,29 +69,26 @@ export default function ServiceSection2({ onOrderNow }) {
       if (!isNaN(date.getTime())) {
         return date.toLocaleDateString();
       }
-    } catch (error) {
-      console.warn('Error parsing date:', error);
+    } catch (err) {
+      console.warn('Error parsing date:', err);
     }
     return "24-48 hours";
   };
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE; // e.g., https://dirtycloths-laundry-project-production.up.railway.app
-
-  // Fetch packages from backend
-  const fetchPackages = async () => {
+  // ✅ fetchPackages wrapped in useCallback (fixes missing deps warning)
+  const fetchPackages = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/package'|| `${API_BASE_URL}/api/package` );
+      const response = await fetch(`${API_BASE_URL}/api/package`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      const transformedPackages = data.map((pkg, index) => {
+      const transformed = data.map((pkg, index) => {
         const processedFeatures = processFeatures(pkg.features);
         const pricing = pkg.pricing || {};
         return {
           id: pkg.packageID || pkg._id || index + 1,
-          packageID: pkg.packageID || pkg._id || index + 1,
           name: pkg.package_name,
           description: pkg.package_description,
           price: getStartingPrice(pricing),
@@ -111,37 +103,30 @@ export default function ServiceSection2({ onOrderNow }) {
           processingTime: formatProcessingTime(pkg.package_time),
           rating: "4.8/5",
           ordersToday: Math.floor(Math.random() * 100) + 20,
-          specialOffer: "Special Offer",
-          popularChoice: "customers",
-          testimonial: {
-            initials: "CU",
-            name: "Customer",
-            customerSince: "2024",
-            review: "Great service with excellent results!"
-          },
-          addOn: "Premium Care (+Rs 50)",
-          timeSavingTip: "Book in advance for better scheduling."
         };
       });
-      setPackages(transformedPackages);
+      setPackages(transformed);
       setError(null);
-    } catch (error) {
-      console.error('Error fetching packages:', error);
+    } catch (err) {
+      console.error('Error fetching packages:', err);
       setError('Failed to load packages. Please try again later.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_BASE_URL]);
 
+  // ✅ useEffect now depends on fetchPackages
   useEffect(() => {
     fetchPackages();
-  }, []);
+  }, [fetchPackages]);
 
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="text-center mb-12">
         <h2 className="text-3xl font-bold text-gray-800 mb-4">Our Premium Services</h2>
-        <p className="text-gray-600 max-w-2xl mx-auto">Choose from our range of professional laundry services tailored to meet your specific needs with exceptional quality and care.</p>
+        <p className="text-gray-600 max-w-2xl mx-auto">
+          Choose from our range of professional laundry services tailored to meet your specific needs with exceptional quality and care.
+        </p>
       </div>
 
       {loading && (

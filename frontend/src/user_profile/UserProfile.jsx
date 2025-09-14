@@ -1,4 +1,4 @@
-import  { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react'; 
 import { useNavigate } from 'react-router-dom';
 import { 
   User, 
@@ -29,7 +29,6 @@ const UserProfile = () => {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Form states
   const [profileForm, setProfileForm] = useState({
     name: '',
     mobile: ''
@@ -44,15 +43,11 @@ const UserProfile = () => {
     showConfirmPassword: false
   });
 
-  // Configuration - Use environment variable with fallback
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api' || 'https://dirtycloths-laundry-project-production.up.railway.app';
-  
-  // Get token from localStorage without immediate redirect
-  const getToken = () => {
-    return localStorage.getItem('token');
-  };
+  // ✅ Fixed: API base fallback
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://dirtycloths-laundry-project-production.up.railway.app';
 
-  // Check if user is authenticated for API calls (with redirect)
+  const getToken = () => localStorage.getItem('token');
+
   const checkAuthForAPI = () => {
     const token = getToken();
     if (!token) {
@@ -62,13 +57,9 @@ const UserProfile = () => {
     return true;
   };
 
-  // Check if user is authenticated without redirect (for component mounting)
-  const hasValidToken = () => {
-    const token = getToken();
-    return !!token;
-  };
+  const hasValidToken = () => !!getToken();
 
-  // API call helper with better error handling
+  // ✅ Memoized API call
   const apiCall = useCallback(async (url, options = {}) => {
     const token = getToken();
     if (!token) {
@@ -78,7 +69,6 @@ const UserProfile = () => {
 
     try {
       const fullUrl = `${API_BASE_URL}${url}`;
-
       const response = await fetch(fullUrl, {
         ...options,
         headers: {
@@ -88,14 +78,12 @@ const UserProfile = () => {
         },
       });
 
-      // Handle unauthorized responses
       if (response.status === 401) {
         localStorage.removeItem('token');
         navigate('/login');
         return null;
       }
 
-      // Handle non-JSON responses
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
@@ -109,15 +97,14 @@ const UserProfile = () => {
       }
 
       return data;
-    } catch (error) {
-      console.error("API call error:", error);
-      throw error;
+    } catch (err) {
+      console.error("API call error:", err);
+      throw err;
     }
   }, [API_BASE_URL, navigate]);
 
-  // Fetch user profile
+  // ✅ Memoized fetchUserProfile
   const fetchUserProfile = useCallback(async () => {
-    // Don't fetch if no token exists
     if (!hasValidToken()) {
       setLoading(false);
       navigate('/login');
@@ -136,7 +123,6 @@ const UserProfile = () => {
         });
       }
     } catch (err) {
-      // Only redirect to login if it's an authentication error
       if (err.message?.includes('401') || err.message?.includes('Unauthorized')) {
         localStorage.removeItem('token');
         navigate('/login');
@@ -148,10 +134,8 @@ const UserProfile = () => {
     }
   }, [apiCall, navigate]);
 
-  // Update profile
   const updateProfile = async () => {
     if (!checkAuthForAPI()) return;
-
     if (!profileForm.name.trim()) {
       setError('Name is required');
       return;
@@ -174,28 +158,24 @@ const UserProfile = () => {
     }
   };
 
-  // Change password
   const changePassword = async () => {
     if (!checkAuthForAPI()) return;
 
     try {
       setError('');
-      
       if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
         setError('All password fields are required');
         return;
       }
-      
       if (passwordForm.newPassword !== passwordForm.confirmPassword) {
         setError('New passwords do not match');
         return;
       }
-      
       if (passwordForm.newPassword.length < 6) {
         setError('New password must be at least 6 characters long');
         return;
       }
-      
+
       await apiCall('/api/auth/change-password', {
         method: 'PUT',
         body: JSON.stringify({
@@ -203,7 +183,7 @@ const UserProfile = () => {
           newPassword: passwordForm.newPassword
         })
       });
-      
+
       setPasswordForm({
         currentPassword: '',
         newPassword: '',
@@ -220,25 +200,23 @@ const UserProfile = () => {
     }
   };
 
-  // Upload profile image with fixed image display
   const uploadProfileImage = async (file) => {
     if (!checkAuthForAPI()) return;
 
     try {
       setError('');
       setUploading(true);
-      
+
       if (!file.type.startsWith('image/')) {
         setError('Please select a valid image file');
         return;
       }
-      
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) {
+
+      if (file.size > 5 * 1024 * 1024) {
         setError('Image file must be less than 5MB');
         return;
       }
-      
+
       const formData = new FormData();
       formData.append('profileImage', file);
 
@@ -246,12 +224,10 @@ const UserProfile = () => {
       if (!token) return;
 
       const fullUrl = `${API_BASE_URL}/api/auth/user/profile-image`;
-      
+
       const response = await fetch(fullUrl, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
 
@@ -267,14 +243,12 @@ const UserProfile = () => {
       }
 
       const data = await response.json();
-      
-      
       const timestamp = Date.now();
       setUser(prev => ({ 
         ...prev, 
         profileImage: data.profileImage + `?t=${timestamp}`
       }));
-      
+
       setSuccess('Profile image updated successfully!');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
@@ -285,19 +259,14 @@ const UserProfile = () => {
     }
   };
 
- 
   const getProfileImageUrl = () => {
     if (!user?.profileImage) return null;
-
-    // If profileImage is a string (URL), use it
     if (typeof user.profileImage === "string") {
       const timestamp = Date.now();
       return user.profileImage.startsWith("http")
         ? `${user.profileImage}?t=${timestamp}`
         : `${API_BASE_URL}/${user.profileImage}?t=${timestamp}`;
     }
-
-    // If profileImage is a buffer (object), convert to base64
     if (typeof user.profileImage === "object" && user.profileImage.data) {
       const base64String = btoa(
         new Uint8Array(user.profileImage.data).reduce(
@@ -307,23 +276,21 @@ const UserProfile = () => {
       );
       return `data:image/jpeg;base64,${base64String}`;
     }
-
     return null;
   };
 
+  // ✅ useEffect depends only on fetchUserProfile
   useEffect(() => {
-    // Only fetch profile if we have a token, but don't redirect immediately
     if (hasValidToken()) {
       fetchUserProfile();
     } else {
-      // Give a small delay to avoid immediate redirect on page load
       const timer = setTimeout(() => {
         setLoading(false);
         navigate('/login');
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [fetchUserProfile, navigate]);
+  }, [fetchUserProfile]);
 
 
   if (loading) {

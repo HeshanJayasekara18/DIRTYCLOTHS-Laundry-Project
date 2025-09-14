@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Mail, 
   Phone, 
-  
   Calendar, 
   MessageSquare, 
   Search,
@@ -18,9 +17,6 @@ import {
 
 import Header from '../admin_header/AdminHeader';
 
-// Mock Header component - replace with your actual import
-
-
 const AdminMessagesPage = () => {
   const [messages, setMessages] = useState([]);
   const [filteredMessages, setFilteredMessages] = useState([]);
@@ -29,24 +25,24 @@ const AdminMessagesPage = () => {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [ setSelectedMessages] = useState([]);
+  const [selectedMessages, setSelectedMessages] = useState([]);
   const [showModal, setShowModal] = useState(false);
 
-  // API Configuration
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api' || 'https://dirtycloths-laundry-project-production.up.railway.app';
+  const API_BASE_URL =
+    process.env.REACT_APP_API_URL ||
+    'https://dirtycloths-laundry-project-production.up.railway.app';
 
-  // Fetch messages from database
-  const fetchMessages = async () => {
+  // Fetch messages
+  const fetchMessages = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch(`${API_BASE_URL}/contact`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          // Add authorization header if needed
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+          Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
         },
       });
 
@@ -55,8 +51,6 @@ const AdminMessagesPage = () => {
       }
 
       const data = await response.json();
-      
-      // Ensure data has the expected structure
       const formattedMessages = data.map(message => ({
         contactID: message.contactID || message.id || message._id,
         name: message.name || 'Unknown',
@@ -74,23 +68,21 @@ const AdminMessagesPage = () => {
     } catch (err) {
       console.error('Error fetching messages:', err);
       setError(`Failed to load messages: ${err.message}`);
-      
-      // Fallback to empty array or show error state
       setMessages([]);
       setFilteredMessages([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_BASE_URL]);
 
   // Update message status
   const updateMessageStatus = async (contactID, newStatus) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/contact${contactID}`, {
+      const response = await fetch(`${API_BASE_URL}/contact/${contactID}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+          Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
         },
         body: JSON.stringify({ status: newStatus }),
       });
@@ -99,12 +91,10 @@ const AdminMessagesPage = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Update local state
-      setMessages(prev => prev.map(msg => 
-        msg.contactID === contactID ? { ...msg, status: newStatus } : msg
-      ));
+      setMessages(prev =>
+        prev.map(msg => (msg.contactID === contactID ? { ...msg, status: newStatus } : msg))
+      );
 
-      // Update selected message if it's the one being updated
       if (selectedMessage && selectedMessage.contactID === contactID) {
         setSelectedMessage(prev => ({ ...prev, status: newStatus }));
       }
@@ -116,15 +106,13 @@ const AdminMessagesPage = () => {
 
   // Delete message
   const deleteMessage = async (contactID) => {
-    if (!window.confirm('Are you sure you want to delete this message?')) {
-      return;
-    }
+    if (!window.confirm('Are you sure you want to delete this message?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/contact${contactID}`, {
+      const response = await fetch(`${API_BASE_URL}/contact/${contactID}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+          Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
         },
       });
 
@@ -132,11 +120,9 @@ const AdminMessagesPage = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Update local state
       setMessages(prev => prev.filter(msg => msg.contactID !== contactID));
       setSelectedMessages(prev => prev.filter(id => id !== contactID));
-      
-      // Close modal if the deleted message was selected
+
       if (selectedMessage && selectedMessage.contactID === contactID) {
         setShowModal(false);
         setSelectedMessage(null);
@@ -153,7 +139,7 @@ const AdminMessagesPage = () => {
       const response = await fetch(`${API_BASE_URL}/contact/export`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+          Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
         },
       });
 
@@ -176,51 +162,37 @@ const AdminMessagesPage = () => {
     }
   };
 
-  // Initial data fetch
+  // Initial fetch
   useEffect(() => {
     fetchMessages();
-  }, []);
+  }, [fetchMessages]);
 
-  // Filter messages based on search and status
+  // Filter messages
   useEffect(() => {
     let filtered = messages;
-    
+
     if (searchTerm) {
-      filtered = filtered.filter(msg => 
+      filtered = filtered.filter(msg =>
         msg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         msg.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         msg.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
         msg.service.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     if (filterStatus !== 'all') {
       filtered = filtered.filter(msg => msg.status === filterStatus);
     }
-    
+
     setFilteredMessages(filtered);
   }, [searchTerm, filterStatus, messages]);
 
-  const handleRefresh = () => {
-    fetchMessages();
-  };
+  const handleRefresh = () => fetchMessages();
+  const handleStatusChange = (contactID, newStatus) => updateMessageStatus(contactID, newStatus);
+  const handleDeleteMessage = (contactID) => deleteMessage(contactID);
 
-  const handleStatusChange = (contactID, newStatus) => {
-    updateMessageStatus(contactID, newStatus);
-  };
-
-  const handleDeleteMessage = (contactID) => {
-    deleteMessage(contactID);
-  };
-
-  const formatDate = (timestamp) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatDate = (timestamp) =>
+    new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -249,7 +221,6 @@ const AdminMessagesPage = () => {
     }
   };
 
-  // Error state
   if (error && !loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
@@ -269,7 +240,6 @@ const AdminMessagesPage = () => {
     );
   }
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
