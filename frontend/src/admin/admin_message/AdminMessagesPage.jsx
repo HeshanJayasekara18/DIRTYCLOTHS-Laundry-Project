@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Mail, 
   Phone, 
-  User, 
+  
   Calendar, 
   MessageSquare, 
   Search,
@@ -29,7 +29,7 @@ const AdminMessagesPage = () => {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [selectedMessages, setSelectedMessages] = useState([]);
+  const [ setSelectedMessages] = useState([]);
   const [showModal, setShowModal] = useState(false);
 
   // API Configuration

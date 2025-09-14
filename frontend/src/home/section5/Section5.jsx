@@ -6,7 +6,7 @@ import './Section5.css'
 // ...rest of your code...
 
 const Section5 = () => {
-    const [isLoaded, setIsLoaded] = useState(false);
+    const [ setIsLoaded] = useState(false);
   return (
     <div className="flex flex-col md:flex-row  bg-blue-300 p-4 md:p-9 w-full">
         <div className="gifcontroller-section5">

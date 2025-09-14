@@ -433,7 +433,7 @@ export default function LaundryServicePage() {
       // Handle 401 error by attempting to refresh token
       if (response.status === 401) {
         console.warn('401 Unauthorized, attempting to refresh token');
-        const refreshResponse = await fetch('http://localhost:5000/api/auth/refresh' || "${API_BASE_URL}/api/auth/refresh", {
+        const refreshResponse = await fetch('http://localhost:5000/api/auth/refresh' || `${API_BASE_URL}/api/auth/refresh`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
