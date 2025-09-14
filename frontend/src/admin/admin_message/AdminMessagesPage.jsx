@@ -37,7 +37,7 @@ const AdminMessagesPage = () => {
   const [showModal, setShowModal] = useState(false);
 
   // API Configuration
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api' || 'https://dirtycloths-laundry-project-production.up.railway.app';
 
   // Fetch messages from database
   const fetchMessages = async () => {

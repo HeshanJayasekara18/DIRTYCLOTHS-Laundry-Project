@@ -45,7 +45,7 @@ const UserProfile = () => {
   });
 
   // Configuration - Use environment variable with fallback
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api' || 'https://dirtycloths-laundry-project-production.up.railway.app';
   
   // Get token from localStorage without immediate redirect
   const getToken = () => {
