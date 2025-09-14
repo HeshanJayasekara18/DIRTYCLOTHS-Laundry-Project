@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback  } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Star, Check, DollarSign, Package, Shirt, Droplet, Settings, X } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -19,12 +19,14 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE || "http://localhost:5000";
+
 export default function LaundryServicePage() {
   const navigate = useNavigate();
   const [selectedService, setSelectedService] = useState(null);
-  const [packages, setPackages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [, setPackages] = useState([]);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -143,75 +145,72 @@ export default function LaundryServicePage() {
     return "24-48 hours";
   };
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE;
-  // Fetch packages from backend
-  const fetchPackages = async () => {
-    try {
-      setLoading(true);
-      const session = UserModel.getSession();
-      if (!session?.token) {
-        throw new Error('No valid session token');
-      }
-      const response = await fetch('http://localhost:5000/api/package' || "${API_BASE_URL}/api/package", {
-        headers: {
-          'Authorization': `Bearer ${session.token}`
-        }
-      });
-      if (!response.ok) {
-        if (response.status === 401) {
-          UserModel.clearSession();
-          navigate('/login');
-          return;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      const transformedPackages = data.map((pkg, index) => {
-        const processedFeatures = processFeatures(pkg.features);
-        const pricing = pkg.pricing || {};
-        return {
-          id: pkg.packageID || pkg._id || index + 1,
-          packageID: pkg.packageID || pkg._id || index + 1,
-          name: pkg.package_name,
-          description: pkg.package_description,
-          price: getStartingPrice(pricing),
-          features: processedFeatures,
-          icon: getPackageIcon(pkg.package_name),
-          weightPricing: [
-            pricing.below_1 && { weight: "Below 1kg", price: formatPrice(pricing.below_1) },
-            pricing.between_1And10 && { weight: "1kg - 10kg", price: formatPrice(pricing.between_1And10) },
-            pricing.above_10 && { weight: "Above 10kg", price: formatPrice(pricing.above_10) }
-          ].filter(Boolean),
-          color: getPackageColor(pkg.package_name),
-          processingTime: formatProcessingTime(pkg.package_time),
-          rating: "4.8/5",
-          ordersToday: Math.floor(Math.random() * 100) + 20,
-          specialOffer: "Special Offer",
-          popularChoice: "customers",
-          testimonial: {
-            initials: "CU",
-            name: "Customer",
-            customerSince: "2024",
-            review: "Great service with excellent results!"
-          },
-          addOn: "Premium Care (+Rs 50)",
-          timeSavingTip: "Book in advance for better scheduling."
-        };
-      });
-      setPackages(transformedPackages);
-      setError(null);
-    } catch (error) {
-      console.error('Error fetching packages:', error);
-      setError('Failed to load packages. Please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchPackages = useCallback(async () => {
+  try {
+    setLoading(true);
+    const session = UserModel.getSession();
+    if (!session?.token) throw new Error("No valid session token");
 
-  // Fetch packages on component mount
+    const response = await fetch(`${API_BASE_URL}/api/package`, {
+      headers: { Authorization: `Bearer ${session.token}` }
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        UserModel.clearSession();
+        navigate("/login");
+        return;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const transformedPackages = data.map((pkg, index) => {
+      const processedFeatures = processFeatures(pkg.features);
+      const pricing = pkg.pricing || {};
+      return {
+        id: pkg.packageID || pkg._id || index + 1,
+        packageID: pkg.packageID || pkg._id || index + 1,
+        name: pkg.package_name,
+        description: pkg.package_description,
+        price: getStartingPrice(pricing),
+        features: processedFeatures,
+        icon: getPackageIcon(pkg.package_name),
+        weightPricing: [
+          pricing.below_1 && { weight: "Below 1kg", price: formatPrice(pricing.below_1) },
+          pricing.between_1And10 && { weight: "1kg - 10kg", price: formatPrice(pricing.between_1And10) },
+          pricing.above_10 && { weight: "Above 10kg", price: formatPrice(pricing.above_10) }
+        ].filter(Boolean),
+        color: getPackageColor(pkg.package_name),
+        processingTime: formatProcessingTime(pkg.package_time),
+        rating: "4.8/5",
+        ordersToday: Math.floor(Math.random() * 100) + 20,
+        specialOffer: "Special Offer",
+        popularChoice: "customers",
+        testimonial: {
+          initials: "CU",
+          name: "Customer",
+          customerSince: "2024",
+          review: "Great service with excellent results!"
+        },
+        addOn: "Premium Care (+Rs 50)",
+        timeSavingTip: "Book in advance for better scheduling."
+      };
+    });
+
+    setPackages(transformedPackages);
+    setError(null);
+  } catch (err) {
+    console.error("Error fetching packages:", err);
+    setError("Failed to load packages. Please try again later.");
+  } finally {
+    setLoading(false);
+  }
+}, [navigate]);
+
   useEffect(() => {
     fetchPackages();
-  }, []);
+  }, [fetchPackages]);
 
   // Function to handle navigation to order form
   const handleOrderNow = (service) => {
@@ -415,7 +414,7 @@ export default function LaundryServicePage() {
       };
 
       const trySubmitOrder = async (token) => {
-        const response = await fetch('http://localhost:5000/api/order' || "${API_BASE_URL}/api/order", {
+        const response = await fetch(`${API_BASE_URL}/api/order`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -431,7 +430,7 @@ export default function LaundryServicePage() {
       // Handle 401 error by attempting to refresh token
       if (response.status === 401) {
         console.warn('401 Unauthorized, attempting to refresh token');
-        const refreshResponse = await fetch('http://localhost:5000/api/auth/refresh' || `${API_BASE_URL}/api/auth/refresh`, {
+        const refreshResponse = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
