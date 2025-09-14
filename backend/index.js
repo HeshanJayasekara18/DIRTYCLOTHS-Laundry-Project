@@ -8,7 +8,6 @@ const PackageRoute = require("./route/PackageRoute");
 const authRoutes = require("./route/auth");
 const ContactRoute = require("./route/ContactRoute");
 
-
 dotenv.config(); // Load environment variables
 
 // Validate required environment variables
@@ -23,8 +22,25 @@ const PORT = process.env.PORT || 5000;
 // Connect to MongoDB
 connectDB();
 
+// CORS setup for multiple origins
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://dirtyclothslaundry.netlify.app"
+];
+
+app.use(cors({
+  origin: function(origin, callback){
+    if(!origin) return callback(null, true); // allow non-browser requests like Postman
+    if(allowedOrigins.indexOf(origin) === -1){
+      const msg = "The CORS policy for this site does not allow access from the specified Origin.";
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
+
 // Middleware
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'Uploads')));
@@ -43,7 +59,7 @@ app.get("/", (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ message: "Something went wrong!" });
+  res.status(500).json({ message: err.message || "Something went wrong!" });
 });
 
 // Start Server
