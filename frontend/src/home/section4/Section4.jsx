@@ -182,7 +182,7 @@ function Section4() {
             setActiveIndex((prev) => (prev + 1) % services.length);
         }, 3000);
         return () => clearInterval(interval);
-    }, []);
+    }, [services.length]);
 
     return (
         <div className="relative min-h-screen overflow-hidden">

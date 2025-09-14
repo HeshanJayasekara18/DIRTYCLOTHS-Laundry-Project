@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { MapPin, Navigation, Phone, Clock } from "lucide-react";
 
 const LaundryMap = () => {
@@ -6,13 +6,12 @@ const LaundryMap = () => {
   const mapInstanceRef = useRef(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
 
-  // DIRTYCLOTHS laundry coordinates in Midigama, Sri Lanka
-  const laundryCoordinates = [5.965437, 80.394401]; // Approximate coordinates
+  // ✅ Stable coordinates using useMemo
+  const laundryCoordinates = useMemo(() => [5.965437, 80.394401], []);
 
   // ✅ useCallback ensures stable reference for dependency array
   const initializeMap = useCallback(() => {
     if (mapRef.current && window.L && !mapInstanceRef.current) {
-      // Initialize the map
       const map = window.L.map(mapRef.current, {
         center: laundryCoordinates,
         zoom: 15,
@@ -22,13 +21,11 @@ const LaundryMap = () => {
         attributionControl: true,
       });
 
-      // Add OpenStreetMap tile layer
       window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors",
         maxZoom: 19,
       }).addTo(map);
 
-      // Create custom icon
       const laundryIcon = window.L.divIcon({
         html: `
           <div style="
@@ -56,10 +53,8 @@ const LaundryMap = () => {
         popupAnchor: [0, -40],
       });
 
-      // Add marker
       const marker = window.L.marker(laundryCoordinates, { icon: laundryIcon }).addTo(map);
 
-      // Popup content
       const popupContent = `
         <div style="text-align: center; padding: 10px; min-width: 200px;">
           <h3 style="color: #4F46E5; margin: 0 0 10px 0; font-size: 18px; font-weight: bold;">
@@ -84,6 +79,7 @@ const LaundryMap = () => {
           <div style="margin-top: 10px;">
             <a href="https://www.google.com/maps/dir//${laundryCoordinates[0]},${laundryCoordinates[1]}" 
               target="_blank" 
+              rel="noopener noreferrer"
               style="
                 background: linear-gradient(45deg, #4F46E5, #7C3AED);
                 color: white;
@@ -102,7 +98,6 @@ const LaundryMap = () => {
 
       marker.bindPopup(popupContent).openPopup();
 
-      // Circle showing service area (5km)
       window.L.circle(laundryCoordinates, {
         color: "#4F46E5",
         fillColor: "#4F46E5",
@@ -121,7 +116,6 @@ const LaundryMap = () => {
       mapInstanceRef.current = map;
       setIsMapLoaded(true);
 
-      // Add pulse animation CSS
       const style = document.createElement("style");
       style.textContent = `
         @keyframes pulse {
@@ -139,16 +133,14 @@ const LaundryMap = () => {
       if (!document.querySelector('link[href*="leaflet"]')) {
         const leafletCSS = document.createElement("link");
         leafletCSS.rel = "stylesheet";
-        leafletCSS.href =
-          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";
+        leafletCSS.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";
         leafletCSS.crossOrigin = "";
         document.head.appendChild(leafletCSS);
       }
 
       if (!window.L) {
         const leafletJS = document.createElement("script");
-        leafletJS.src =
-          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
+        leafletJS.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
         leafletJS.crossOrigin = "";
         leafletJS.onload = initializeMap;
         document.head.appendChild(leafletJS);
@@ -178,7 +170,6 @@ const LaundryMap = () => {
 
   return (
     <div className="bg-white rounded-3xl shadow-2xl p-8 relative overflow-hidden">
-      {/* Header */}
       <div className="mb-6">
         <h3 className="text-2xl font-bold text-gray-800 mb-2 flex items-center">
           <MapPin className="w-6 h-6 mr-2 text-indigo-600" />
@@ -190,7 +181,6 @@ const LaundryMap = () => {
         </p>
       </div>
 
-      {/* Map Container */}
       <div className="relative">
         <div
           ref={mapRef}
@@ -207,7 +197,6 @@ const LaundryMap = () => {
           )}
         </div>
 
-        {/* Quick Action Buttons */}
         <div className="flex gap-4 mt-6">
           <button
             onClick={handleGetDirections}
@@ -225,7 +214,6 @@ const LaundryMap = () => {
           </button>
         </div>
 
-        {/* Location Details */}
         <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-6 mt-6">
           <div className="grid md:grid-cols-2 gap-6">
             <div>
@@ -259,7 +247,6 @@ const LaundryMap = () => {
           </div>
         </div>
 
-        {/* Service Area Info */}
         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-4 mt-4 border border-indigo-200">
           <p className="text-sm text-gray-700 text-center">
             <span className="font-semibold text-indigo-700">

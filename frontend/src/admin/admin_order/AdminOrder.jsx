@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import  { useState, useEffect, useCallback } from 'react';
 import AdminHeader from "../admin_header/AdminHeader";
 import { 
-  Search, Filter, Eye, Calendar, MapPin, User, Phone, Mail, Package, Clock, DollarSign 
+  Search, Filter, Eye, Calendar, MapPin, User, Mail, Package, DollarSign 
 } from 'lucide-react';
 
 const AdminOrder = () => {

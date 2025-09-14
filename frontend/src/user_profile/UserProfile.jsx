@@ -57,7 +57,7 @@ const UserProfile = () => {
     return true;
   };
 
-  const hasValidToken = () => !!getToken();
+
 
   // ✅ Memoized API call
   const apiCall = useCallback(async (url, options = {}) => {
@@ -105,7 +105,8 @@ const UserProfile = () => {
 
   // ✅ Memoized fetchUserProfile
   const fetchUserProfile = useCallback(async () => {
-    if (!hasValidToken()) {
+    const token = localStorage.getItem('token');
+    if (!token) {
       setLoading(false);
       navigate('/login');
       return;
@@ -133,6 +134,7 @@ const UserProfile = () => {
       setLoading(false);
     }
   }, [apiCall, navigate]);
+
 
   const updateProfile = async () => {
     if (!checkAuthForAPI()) return;
@@ -279,9 +281,9 @@ const UserProfile = () => {
     return null;
   };
 
-  // ✅ useEffect depends only on fetchUserProfile
   useEffect(() => {
-    if (hasValidToken()) {
+    const token = localStorage.getItem('token');
+    if (token) {
       fetchUserProfile();
     } else {
       const timer = setTimeout(() => {
@@ -290,7 +292,8 @@ const UserProfile = () => {
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [fetchUserProfile]);
+  }, [fetchUserProfile, navigate]);
+
 
 
   if (loading) {

@@ -10,9 +10,9 @@ const Footer = () => {
           <div className="flex items-center">
             <img
               src={logo}
+              alt="DirtyCloths Logo"
               height={200}
               width={300}
-              alt="DirtyCloths Laundry Logo"   // ✅ Added alt prop
             />
           </div>
           <p className="text-gray-700 mt-2">
@@ -27,19 +27,19 @@ const Footer = () => {
             <h3 className="font-bold text-lg mb-4">Quick Links</h3>
             <ul className="space-y-2">
               <li className="border-l-2 border-gray-800 pl-3">
-                <a href="#" className="text-gray-800 hover:text-blue-500">Home</a>
+                <a href="/home" className="text-gray-800 hover:text-blue-500">Home</a>
               </li>
               <li className="border-l-2 border-gray-800 pl-3">
-                <a href="#" className="text-gray-800 hover:text-blue-500">Services</a>
+                <a href="/services" className="text-gray-800 hover:text-blue-500">Services</a>
               </li>
               <li className="border-l-2 border-gray-800 pl-3">
-                <a href="#" className="text-gray-800 hover:text-blue-500">Pricing</a>
+                <a href="/pricing" className="text-gray-800 hover:text-blue-500">Pricing</a>
               </li>
               <li className="border-l-2 border-gray-800 pl-3">
-                <a href="#" className="text-gray-800 hover:text-blue-500">About Us</a>
+                <a href="/about" className="text-gray-800 hover:text-blue-500">About Us</a>
               </li>
               <li className="border-l-2 border-gray-800 pl-3">
-                <a href="#" className="text-gray-800 hover:text-blue-500">Contact</a>
+                <a href="/contact" className="text-gray-800 hover:text-blue-500">Contact</a>
               </li>
             </ul>
           </div>
@@ -49,13 +49,13 @@ const Footer = () => {
             <h3 className="font-bold text-lg mb-4">Social Media</h3>
             <ul className="space-y-2">
               <li>
-                <a href="#" className="text-gray-800 hover:text-blue-500">Facebook</a>
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:text-blue-500">Facebook</a>
               </li>
               <li>
-                <a href="#" className="text-gray-800 hover:text-blue-500">Instagram</a>
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:text-blue-500">Instagram</a>
               </li>
               <li>
-                <a href="#" className="text-gray-800 hover:text-blue-500">WhatsApp</a>
+                <a href="https://wa.me/94771234567" target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:text-blue-500">WhatsApp</a>
               </li>
             </ul>
           </div>
@@ -82,7 +82,7 @@ const Footer = () => {
 
         {/* Copyright */}
         <div className="text-center mt-8 text-sm text-gray-600">
-          © 2025 DirtyClouths Laundry Service. All rights reserved.
+          © 2025 DirtyCloths Laundry Service. All rights reserved.
         </div>
       </div>
     </footer>
