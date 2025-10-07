@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 import Header from '../admin_header/AdminHeader';
+import { API_BASE_URL } from '../../config';
 
 const AdminMessagesPage = () => {
   const [messages, setMessages] = useState([]);
@@ -27,10 +28,6 @@ const AdminMessagesPage = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [setSelectedMessages] = useState([]);
   const [showModal, setShowModal] = useState(false);
-
-  const API_BASE_URL =
-    process.env.REACT_APP_API_URL ||
-    'https://dirtycloths-laundry-project-production.up.railway.app';
 
   // Fetch messages
   const fetchMessages = useCallback(async () => {

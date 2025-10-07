@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Footer from '../home/footer/Footer';
 import LaundryMap from './map-api/MapDisplay';
+import { API_BASE_URL } from '../config';
 
 const ContactUS = () => {
   const [isVisible, setIsVisible] = useState(false);

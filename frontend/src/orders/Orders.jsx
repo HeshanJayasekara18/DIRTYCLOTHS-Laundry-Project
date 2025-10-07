@@ -6,7 +6,7 @@ import Footer from '../home/footer/Footer';
 import { CheckCircle, Clock, AlertTriangle, ArrowRight, CheckCircle2, Loader2, Droplets, Wind, WashingMachine, Trash2,  } from 'lucide-react';
 import { UserModel } from '../reg/UserModel';
 import CancelOrderModal from './CancelOrderModal';
-
+import { API_BASE_URL } from '../config';
 
 
 const Orders = () => {
@@ -31,9 +31,6 @@ const Orders = () => {
         navigate('/login');
         return;
       }
-
-      // done
-      const API_BASE_URL = process.env.REACT_APP_API_BASE;
 
       try {
         const res = await fetch(`${API_BASE_URL}/order`, {
@@ -116,8 +113,6 @@ const Orders = () => {
         setError('No order selected.');
         return;
       }
-
-      const API_BASE_URL = process.env.REACT_APP_API_BASE; // Make sure this is set in your frontend .env
 
       try {
         const response = await fetch(`${API_BASE_URL}/order/${selectedOrderId}`, {

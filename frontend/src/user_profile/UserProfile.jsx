@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../common/navbar/Navbar';
 import Addresstab from './Addresstab';
+import { API_BASE_URL } from '../config';
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -42,9 +43,6 @@ const UserProfile = () => {
     showNewPassword: false,
     showConfirmPassword: false
   });
-
-  // ✅ Fixed: API base fallback
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://dirtycloths-laundry-project-production.up.railway.app';
 
   const getToken = () => localStorage.getItem('token');
 

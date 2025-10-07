@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Package, Shirt, Droplet, Settings } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 export default function ServiceSection2({ onOrderNow }) {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const API_BASE_URL = process.env.REACT_APP_API_BASE; 
-  // Example: https://dirtycloths-laundry-project-production.up.railway.app
 
   // Icon mapping
   const getPackageIcon = (packageName) => {
