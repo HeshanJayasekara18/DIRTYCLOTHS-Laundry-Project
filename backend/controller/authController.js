@@ -1,118 +1,190 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
-const path = require('path');
+const crypto = require('crypto');
 const User = require('../models/User');
+const { createTokens, generateToken, generateRefreshToken, setTokenCookie } = require('../utils/auth');
+const { sendEmail } = require('../utils/email');
 
-// Multer configuration for profile image uploads
-const storage = multer.diskStorage({
-  destination: './Uploads/',
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
-
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed!'), false);
-  }
+// Helper function to get client IP address
+const getIpAddress = (req) => {
+  return req.ip || 
+         req.headers['x-forwarded-for'] || 
+         req.connection.remoteAddress || 
+         '';
 };
 
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 1024 * 1024 * 5 }, // 5MB limit
-});
-
+// Register a new user
 const registerUser = async (req, res) => {
   try {
     const { email, password, name, mobile } = req.body;
-    if (!email || !password || !name || !mobile) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      return res.status(400).json({ message: 'Invalid email format' });
-    }
-    if (password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
-    }
-    if (!/^\+?\d{10,15}$/.test(mobile)) {
-      return res.status(400).json({ message: 'Invalid mobile number format' });
+    
+    // Input validation
+    if (!email || !password || !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, name, and password are required',
+        code: 'VALIDATION_ERROR'
+      });
     }
 
+    // Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      return res.status(400).json({ message: 'Email already exists' });
+      return res.status(409).json({
+        success: false,
+        message: 'Email already in use',
+        code: 'EMAIL_EXISTS'
+      });
     }
 
+    // Create new user
     const user = await User.create({
       email: email.toLowerCase(),
-      password, // Will be hashed by pre-save hook
+      password,
       name,
-      mobile,
-      role: 'user',
-      addresses: [],
+      mobile: mobile || '',
+      role: 'user'
     });
 
-    const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    // Generate email verification token
+    const verificationToken = user.generateVerificationToken();
+    await user.save({ validateBeforeSave: false });
 
-    res.status(201).json({
-      token,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      mobile: user.mobile,
-      profileImage: user.profileImage || '',
-      addresses: user.addresses,
-    });
-  } catch (error) {
-    console.error('Register error:', error);
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((err) => err.message).join(', ');
-      return res.status(400).json({ message: messages });
+    // Send verification email (in production)
+    if (process.env.NODE_ENV === 'production') {
+      const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${verificationToken}`;
+      await sendEmail({
+        to: user.email,
+        subject: 'Verify Your Email',
+        html: `Please click <a href="${verificationUrl}">here</a> to verify your email.`
+      });
     }
-    res.status(500).json({ message: 'Server error' });
+
+    // Generate tokens
+    const { accessToken, refreshToken } = createTokens(user);
+    
+    // Set refresh token in HTTP-only cookie
+    setTokenCookie(res, refreshToken);
+
+    // Return user data and access token
+    res.status(201).json({
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          isVerified: user.isVerified,
+          profileImage: user.profileImage || null
+        },
+        token: accessToken
+      }
+    });
+
+  } catch (error) {
+    console.error('Registration error:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message).join(', ');
+      return res.status(400).json({
+        success: false,
+        message: `Validation error: ${messages}`,
+        code: 'VALIDATION_ERROR'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Server error during registration',
+      code: 'SERVER_ERROR'
+    });
   }
 };
 
+// Login user
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const ipAddress = getIpAddress(req);
+
+    // Input validation
     if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required',
+        code: 'VALIDATION_ERROR'
+      });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    // Find user by email
+    const user = await User.findOne({ email: email.toLowerCase() })
+      .select('+password +loginAttempts +lockUntil');
+
     if (!user) {
-      return res.status(401).json({ message: 'User not found' });
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password',
+        code: 'INVALID_CREDENTIALS'
+      });
     }
 
+    // Check if account is locked
+    if (user.isAccountLocked()) {
+      const timeLeft = Math.ceil((user.lockUntil - Date.now()) / 1000 / 60);
+      return res.status(423).json({
+        success: false,
+        message: `Account locked. Try again in ${timeLeft} minutes.`,
+        code: 'ACCOUNT_LOCKED',
+        retryAfter: timeLeft * 60
+      });
+    }
+
+    // Verify password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Incorrect password' });
+      // Increment failed login attempts
+      await user.incrementLoginAttempts(ipAddress);
+      const attemptsLeft = 5 - (user.loginAttempts + 1);
+      
+      return res.status(401).json({
+        success: false,
+        message: `Invalid email or password. ${attemptsLeft > 0 ? attemptsLeft + ' attempts left.' : ''}`,
+        code: 'INVALID_CREDENTIALS',
+        attemptsLeft: attemptsLeft > 0 ? attemptsLeft : 0
+      });
     }
 
-    const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    // Reset login attempts on successful login
+    await user.resetLoginAttempts();
+    
+    // Update last login timestamp
+    user.lastLogin = new Date();
+    await user.save();
 
+    // Generate tokens
+    const { accessToken, refreshToken } = createTokens(user);
+    
+    // Set refresh token in HTTP-only cookie
+    setTokenCookie(res, refreshToken);
+
+    // Return user data and access token
     res.json({
-      token,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      mobile: user.mobile,
-      profileImage: user.profileImage || '',
-      addresses: user.addresses,
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          isVerified: user.isVerified,
+          profileImage: user.profileImage || null,
+          addresses: user.addresses || [],
+          mobile: user.mobile || ''
+        },
+        token: accessToken
+      }
     });
   } catch (error) {
     console.error('Login error:', error);
