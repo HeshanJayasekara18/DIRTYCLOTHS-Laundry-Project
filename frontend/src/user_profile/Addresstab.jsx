@@ -12,6 +12,7 @@ import {
   CheckCircle,
   X
 } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 const Addresstab = ({ user, setUser, error, setError, success, setSuccess }) => {
   const navigate = useNavigate();
@@ -26,9 +27,6 @@ const Addresstab = ({ user, setUser, error, setError, success, setSuccess }) => 
   });
   
   const validAddressLabels = ['home', 'work', 'favorite', 'other'];
-
-  // Configuration - Use environment variable with fallback
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api' || 'https://dirtycloths-laundry-project-production.up.railway.app';
 
   // Get token from localStorage without immediate redirect
   const getToken = () => {

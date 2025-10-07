@@ -3,6 +3,7 @@ import AdminHeader from "../admin_header/AdminHeader";
 import { 
   Search, Filter, Eye, Calendar, MapPin, User, Mail, Package, DollarSign 
 } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 const AdminOrder = () => {
   const [orders, setOrders] = useState([]);
@@ -11,8 +12,6 @@ const AdminOrder = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showModal, setShowModal] = useState(false);
-
-  const API_BASE_URL = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
 
   // Fetch orders
   const fetchOrders = useCallback(async () => {

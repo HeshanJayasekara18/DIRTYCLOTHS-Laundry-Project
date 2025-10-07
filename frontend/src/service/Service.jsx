@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback  } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Star, Check, DollarSign, Package, Shirt, Droplet, Settings, X } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -10,6 +10,7 @@ import ServiceSection2 from './service-section2/ServiceSection2';
 import ServiceSection3 from './service-section3/ServiceSection3';
 import ServiceSection4 from './service-section4/ServiceSection4';
 import { UserModel } from '../reg/UserModel';
+import { API_BASE_URL } from '../config';
 import 'leaflet/dist/leaflet.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -19,13 +20,11 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE || "http://localhost:5000";
-
 export default function LaundryServicePage() {
   const navigate = useNavigate();
   const [selectedService, setSelectedService] = useState(null);
-  const [, setPackages] = useState([]);
-  const [, setLoading] = useState(true);
+  const [packages, setPackages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [, setError] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
 

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 
 const UserModel = {
   register: async (email, password, name, mobile) => {
@@ -18,7 +19,7 @@ const UserModel = {
         throw new Error("All fields are required");
       }
       
-      const response = await axios.post("http://localhost:5000/api/auth/register", registrationData);
+      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, registrationData);
       return response.data;
     } catch (error) {
       console.error("Registration error:", error.response?.data);
@@ -37,7 +38,7 @@ const UserModel = {
       
       console.log("Sending login data:", { email: loginData.email, password: "[HIDDEN]" });
       
-      const response = await axios.post("http://localhost:5000/api/auth/login", loginData);
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, loginData);
       return response.data;
     } catch (error) {
       console.error("Login error:", error.response?.data);
