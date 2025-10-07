@@ -33,7 +33,7 @@ const Orders = () => {
       }
 
       try {
-        const res = await fetch(`${API_BASE_URL}/order`, {
+        const res = await fetch(`${API_BASE_URL}/api/order`, {
           headers: {
             Authorization: `Bearer ${session.token}`,
             'Content-Type': 'application/json'
@@ -115,7 +115,7 @@ const Orders = () => {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/order/${selectedOrderId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/order/${selectedOrderId}`, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${session.token}`,

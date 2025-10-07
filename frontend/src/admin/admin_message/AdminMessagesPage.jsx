@@ -35,7 +35,7 @@ const AdminMessagesPage = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_BASE_URL}/contact`, {
+      const response = await fetch(`${API_BASE_URL}/api/contact`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -75,7 +75,7 @@ const AdminMessagesPage = () => {
   // Update message status
   const updateMessageStatus = async (contactID, newStatus) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/contact/${contactID}`, {
+      const response = await fetch(`${API_BASE_URL}/api/contact/${contactID}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -106,7 +106,7 @@ const AdminMessagesPage = () => {
     if (!window.confirm('Are you sure you want to delete this message?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/contact/${contactID}`, {
+      const response = await fetch(`${API_BASE_URL}/api/contact/${contactID}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
@@ -133,7 +133,7 @@ const AdminMessagesPage = () => {
   // Export messages
   const exportMessages = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/contact/export`, {
+      const response = await fetch(`${API_BASE_URL}/api/contact/export`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`,

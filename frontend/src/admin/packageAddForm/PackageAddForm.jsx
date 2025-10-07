@@ -46,7 +46,6 @@ const PackageAddForm = ({ open, handleClose, getAllPackage, addPackage }) => {
         package_time: formData.package_time,
         features: Array.isArray(formData.features) ? formData.features : [formData.features],
         pricing: {
-            below_1: parseFloat(formData.pricing.below_1) || 0,
             between_1And10: parseFloat(formData.pricing.between_1And10) || 0,
             above_10: parseFloat(formData.pricing.above_10) || 0
         }
@@ -54,7 +53,7 @@ const PackageAddForm = ({ open, handleClose, getAllPackage, addPackage }) => {
 
     const API_BASE_URL = process.env.REACT_APP_API_BASE; // Railway backend URL
 
-    const response = await fetch(`${API_BASE_URL}/package`, {
+    const response = await fetch(`${API_BASE_URL}/api/package`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

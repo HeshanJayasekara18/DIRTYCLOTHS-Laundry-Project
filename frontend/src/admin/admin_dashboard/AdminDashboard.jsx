@@ -15,7 +15,6 @@ const LaundryAdminPage = () => {
   const [error, setError] = useState('');
  
 
-
   
 
   // Fetch orders from API
@@ -23,8 +22,8 @@ const LaundryAdminPage = () => {
     try {
       setLoading(true);
       setError('');
-      const token = localStorage.getItem ("token"); // Get JWT token from localStorage
-      const response = await fetch(`${API_BASE_URL}/order`, {
+      const token = localStorage.getItem('token'); // Get JWT token from localStorage
+      const response = await fetch(`${API_BASE_URL}/api/order`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -50,7 +49,7 @@ const LaundryAdminPage = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch(`${API_BASE_URL}/package`);
+      const response = await fetch(`${API_BASE_URL}/api/package`);
       if (response.ok) {
         const data = await response.json();
         console.log('Packages fetched:', data);
@@ -88,7 +87,7 @@ const LaundryAdminPage = () => {
       setError('');
       console.log('Sending package data:', newPackage);
       
-      const response = await fetch(`${API_BASE_URL}/package`, {
+      const response = await fetch(`${API_BASE_URL}/api/package`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +118,7 @@ const LaundryAdminPage = () => {
       console.log('Updating package with ID:', packageId);
       console.log('Updated package data:', updatedPackage);
       
-      const response = await fetch(`${API_BASE_URL}/package/${packageId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/package/${packageId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -150,7 +149,7 @@ const LaundryAdminPage = () => {
     if (window.confirm('Are you sure you want to delete this package?')) {
       try {
         setError('');
-        const response = await fetch(`${API_BASE_URL}/package/${packageId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/package/${packageId}`, {
           method: 'DELETE',
         });
         

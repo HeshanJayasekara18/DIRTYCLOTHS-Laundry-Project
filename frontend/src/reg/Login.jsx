@@ -22,7 +22,6 @@ const Login = () => {
         console.log("Redirecting authenticated admin to /admin");
         navigate("/admin", { replace: true });
       } else {
-        console.log("Redirecting authenticated user to /");
         navigate("/home", { replace: true });
       }
     }
@@ -34,6 +33,34 @@ const Login = () => {
       sessionStorage.setItem('intendedPath', location.state.from.pathname);
     }
   }, [location]);
+
+  // Auto-login from registration
+  useEffect(() => {
+    const autoLoginFromRegistration = async () => {
+      if (location.state?.autoLogin && location.state?.email && location.state?.password) {
+        console.log("Auto-login triggered from registration");
+        setEmail(location.state.email);
+        setPassword(location.state.password);
+        setLoading(true);
+        
+        try {
+          await UserController.handleLogin(
+            location.state.email, 
+            location.state.password, 
+            setError, 
+            navigate
+          );
+        } catch (error) {
+          console.error("Auto-login error:", error);
+          setError("Auto-login failed. Please login manually.");
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    autoLoginFromRegistration();
+  }, [location.state, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

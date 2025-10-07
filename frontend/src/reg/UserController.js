@@ -35,7 +35,6 @@ const UserController = {
         return;
       }
       
-      // Validate name length
       if (trimmedName.length < 2) {
         setError("Name must be at least 2 characters");
         return;
@@ -56,7 +55,15 @@ const UserController = {
       if (user.role === "admin") {
         navigate("/admin");
       } else {
-        navigate("/login"); // <-- Always navigate to login for regular users
+        // Navigate to login with credentials for auto-login
+        navigate("/login", { 
+          state: { 
+            autoLogin: true,
+            email: trimmedEmail,
+            password: password,
+            fromRegistration: true
+          } 
+        });
       }
       
     } catch (error) {
@@ -101,7 +108,7 @@ const UserController = {
       }
       
       // For regular users, check if there's an intended destination
-      const intendedPath = sessionStorage.getItem('intendedPath') || "/";
+      const intendedPath = sessionStorage.getItem('intendedPath') || "/home";
       console.log("👤 Regular user detected, navigating to:", intendedPath);
       
       // Clear the intended path after use

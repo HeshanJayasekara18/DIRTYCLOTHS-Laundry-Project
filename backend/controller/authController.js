@@ -467,5 +467,4 @@ module.exports = {
   addAddress,
   deleteAddress,
   setDefaultAddress,
-  upload,
 };

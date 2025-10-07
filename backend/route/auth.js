@@ -11,9 +11,11 @@ const {
   deleteAddress,
   setDefaultAddress,
   upload,
+} = require("../controller/UserController");
+const {
   registerUser,
   loginUser,
-} = require("../controller/UserController");
+} = require("../controller/authController");
 const { verifyToken } = require("../middleware/authMiddleware");
 
 // ------------------------ AUTH ROUTES ------------------------
