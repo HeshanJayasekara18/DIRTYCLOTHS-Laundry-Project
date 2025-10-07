@@ -1,48 +1,93 @@
 import { UserModel } from "./UserModel";
 
 const UserController = {
-  handleRegister: async (email, password, name, setError, navigate) => {
+  handleRegister: async (email, password, name, mobile, setError, navigate) => {
     try {
-      if (!email || !password || !name) {
+      // Clear any previous errors
+      setError("");
+      
+      // Trim values
+      const trimmedEmail = email?.trim();
+      const trimmedName = name?.trim();
+      const trimmedMobile = mobile?.trim();
+      
+      console.log("Registration attempt with:", { 
+        email: trimmedEmail, 
+        name: trimmedName, 
+        passwordLength: password?.length 
+      });
+      
+      // Validate required fields
+      if (!trimmedEmail || !password || !trimmedName) {
         setError("All fields are required");
         return;
       }
-      if (!/^\S+@\S+\.\S+$/.test(email)) {
+      
+      // Validate email format
+      if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
         setError("Invalid email format");
         return;
       }
+      
+      // Validate password length
       if (password.length < 6) {
         setError("Password must be at least 6 characters");
         return;
       }
       
-      const user = await UserModel.register(email.trim(), password, name);
-      UserModel.setSession(user);
-      console.log("Registered user:", user, "Session:", UserModel.getSession());
+      if (trimmedName.length < 2) {
+        setError("Name must be at least 2 characters");
+        return;
+      }
       
-      // Check if registered user is admin and redirect accordingly
+      const user = await UserModel.register(trimmedEmail, password, trimmedName, trimmedMobile);
+      
+      console.log("Registration successful:", user);
+      
+      // Set session
+      UserModel.setSession(user);
+      
+      // Verify session was set
+      const session = UserModel.getSession();
+      console.log("Session after registration:", session);
+      
+      // Navigate based on user role
       if (user.role === "admin") {
         navigate("/admin");
       } else {
-        navigate("/home");
+        // Navigate to login with credentials for auto-login
+        navigate("/login", { 
+          state: { 
+            autoLogin: true,
+            email: trimmedEmail,
+            password: password,
+            fromRegistration: true
+          } 
+        });
       }
+      
     } catch (error) {
       console.error("Registration error:", error);
-      setError(error.message);
+      setError(error.message || "Registration failed");
     }
   },
 
   handleLogin: async (email, password, setError, navigate) => {
     try {
-      if (!email || !password) {
+      // Clear any previous errors
+      setError("");
+      
+      const trimmedEmail = email?.trim();
+      
+      if (!trimmedEmail || !password) {
         setError("Email and password are required");
         return;
       }
       
       console.log("=== LOGIN ATTEMPT IN CONTROLLER ===");
-      console.log("Email:", email.trim());
+      console.log("Email:", trimmedEmail);
       
-      const user = await UserModel.login(email.trim(), password);
+      const user = await UserModel.login(trimmedEmail, password);
       
       console.log("=== LOGIN RESPONSE ===");
       console.log("User received:", user);
@@ -63,7 +108,7 @@ const UserController = {
       }
       
       // For regular users, check if there's an intended destination
-      const intendedPath = sessionStorage.getItem('intendedPath') || "/";
+      const intendedPath = sessionStorage.getItem('intendedPath') || "/home";
       console.log("👤 Regular user detected, navigating to:", intendedPath);
       
       // Clear the intended path after use

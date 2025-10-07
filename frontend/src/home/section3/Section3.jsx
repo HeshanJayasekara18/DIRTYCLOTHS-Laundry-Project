@@ -7,36 +7,36 @@ const feedbackData = [
     id: 1,
     name: "Sasha Perry",
     level: "Level 3 User",
-    rating: 4,
-    comment: "Nisi vivamus neque elementum, at pharetra. Cras gravida congue in tincidunt neque, ipsum egestas. Duis risus ipsum dis commodo. Enim euismod velit amet volutpat egestas urna in eget pellentesque. Cras gravida congue in tincidunt neque, ipsum egestas"
+    rating: 5,
+    comment: "Fast and reliable service! My clothes always come back fresh and neatly folded. Highly recommend DirtyClouths in Midigama."
   },
   {
     id: 2,
     name: "Andrew SI",
     level: "Level 4 User",
     rating: 5,
-    comment: "Nisi vivamus neque elementum, at pharetra. Cras gravida congue in tincidunt neque, ipsum egestas. Duis risus ipsum dis commodo. Enim euismod velit amet volutpat egestas urna in eget pellentesque. Cras gravida congue in tincidunt neque, ipsum egestas"
+    comment: "Affordable prices and excellent customer care. DirtyClouths makes laundry day stress-free!"
   },
   {
     id: 3,
     name: "Jone Smith",
     level: "Level 3 User",
-    rating: 4,
-    comment: "Nisi vivamus neque elementum, at pharetra. Cras gravida congue in tincidunt neque, ipsum egestas. Duis risus ipsum dis commodo. Enim euismod velit amet volutpat egestas urna in eget pellentesque. Cras gravida congue in tincidunt neque, ipsum egestas"
+    rating: 5,
+    comment: "I love the attention to detail. Stains are gone and clothes feel so soft. Great job, DirtyClouths!"
   },
   {
     id: 4,
     name: "Emma Johnson",
     level: "Level 5 User",
     rating: 5,
-    comment: "Nisi vivamus neque elementum, at pharetra. Cras gravida congue in tincidunt neque, ipsum egestas. Duis risus ipsum dis commodo. Enim euismod velit amet volutpat egestas urna in eget pellentesque."
+    comment: "Good service and friendly staff. Pickup and delivery was convenient for me."
   },
   {
     id: 5,
     name: "Michael Chen",
     level: "Level 2 User",
-    rating: 4,
-    comment: "Nisi vivamus neque elementum, at pharetra. Cras gravida congue in tincidunt neque, ipsum egestas. Duis risus ipsum dis commodo. Enim euismod velit amet volutpat."
+    rating: 5,
+    comment: "DirtyClouths is my go-to laundry service in Midigama. Always punctual and clothes smell amazing!"
   }
 ];
 

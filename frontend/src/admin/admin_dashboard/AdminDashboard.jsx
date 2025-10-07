@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit3, Trash2, Package, DollarSign, Clock, Users, Search, Filter, MoreVertical, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit3, Trash2, Package, DollarSign, Clock, Search, CheckCircle, XCircle } from 'lucide-react';
+import { API_BASE_URL } from '../../config'; // Adjust path if needed
 
 
 import AdminHeader from '../admin_header/AdminHeader';
@@ -14,8 +15,6 @@ const LaundryAdminPage = () => {
   const [error, setError] = useState('');
  
 
-  const API_BASE_URL = 'http://localhost:5000/api';
-
   
 
   // Fetch orders from API
@@ -23,7 +22,13 @@ const LaundryAdminPage = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch(`${API_BASE_URL}/order`);
+      const token = localStorage.getItem('token'); // Get JWT token from localStorage
+      const response = await fetch(`${API_BASE_URL}/api/order`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         console.log('Orders fetched:', data);
@@ -44,7 +49,7 @@ const LaundryAdminPage = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch(`${API_BASE_URL}/package`);
+      const response = await fetch(`${API_BASE_URL}/api/package`);
       if (response.ok) {
         const data = await response.json();
         console.log('Packages fetched:', data);
@@ -69,11 +74,7 @@ const LaundryAdminPage = () => {
       });
   }, []);
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.order_id?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
+
 
   const filteredPackages = packages.filter(pkg => {
     const matchesSearch = pkg.package_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -86,7 +87,7 @@ const LaundryAdminPage = () => {
       setError('');
       console.log('Sending package data:', newPackage);
       
-      const response = await fetch(`${API_BASE_URL}/package`, {
+      const response = await fetch(`${API_BASE_URL}/api/package`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -117,7 +118,7 @@ const LaundryAdminPage = () => {
       console.log('Updating package with ID:', packageId);
       console.log('Updated package data:', updatedPackage);
       
-      const response = await fetch(`${API_BASE_URL}/package/${packageId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/package/${packageId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +149,7 @@ const LaundryAdminPage = () => {
     if (window.confirm('Are you sure you want to delete this package?')) {
       try {
         setError('');
-        const response = await fetch(`${API_BASE_URL}/package/${packageId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/package/${packageId}`, {
           method: 'DELETE',
         });
         

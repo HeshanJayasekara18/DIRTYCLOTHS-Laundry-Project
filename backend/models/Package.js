@@ -51,6 +51,6 @@ const PackageSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Make sure to use the correct model name
+
 const Package = mongoose.model("Package", PackageSchema);
 module.exports = Package;

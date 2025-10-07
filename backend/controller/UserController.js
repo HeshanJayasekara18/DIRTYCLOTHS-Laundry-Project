@@ -1,10 +1,11 @@
-const multer = require("multer");
-const path = require("path");
-const User = require("../models/User");
+// controller/UserController.js
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const multer = require("multer");
+const User = require("../models/User");
 
+// ================= MULTER CONFIG =================
 const storage = multer.diskStorage({
   destination: "./Uploads/",
   filename: (req, file, cb) => {
@@ -21,15 +22,17 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(), // <-- use memory storage
   fileFilter,
-  limits: { fileSize: 1024 * 1024 * 5 } // 5MB limit
+  limits: { fileSize: 1024 * 1024 * 5 }, // 5MB limit
 });
 
-const register = async (req, res) => {
+// ================= REGISTER =================
+const registerUser = async (req, res) => {
   try {
-    const { email, password, name } = req.body;
-    if (!email || !password || !name) {
+    const { email, password, name, mobile, role, adminSecret } = req.body;
+
+    if (!email || !password || !name || !mobile) {
       return res.status(400).json({ message: "All fields are required" });
     }
     if (!/^\S+@\S+\.\S+$/.test(email)) {
@@ -38,305 +41,272 @@ const register = async (req, res) => {
     if (password.length < 6) {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+    if (!/^\+?\d{10,15}$/.test(mobile)) {
+      return res.status(400).json({ message: "Invalid mobile number format" });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
 
-    const user = new User({
-      email,
-      password: hashedPassword,
+    // Determine role
+    let userRole = "user";
+    if (role === "admin") {
+      if (adminSecret !== process.env.ADMIN_SECRET) {
+        return res.status(403).json({ message: "Not allowed to create admin" });
+      }
+      userRole = "admin";
+    }
+
+    const user = await User.create({
+      email: email.toLowerCase(),
+      password, 
       name,
-      role: "user",
-      addresses: [] // Initialize addresses array
+      mobile,
+      role: userRole,
+      addresses: [],
     });
-    await user.save();
 
-    const token = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "24h" });
-    res.status(201).json({ 
-      token, 
-      email: user.email, 
-      name: user.name, 
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    res.status(201).json({
+      token,
+      email: user.email,
+      name: user.name,
       role: user.role,
-      mobile: user.mobile || "",
-      profileImage: user.profileImage || null,
-      addresses: user.addresses || []
+      mobile: user.mobile,
+      profileImage: user.profileImage || "",
+      addresses: user.addresses,
     });
   } catch (error) {
-    console.error("Registration error:", error);
-    res.status(500).json({ message: "Registration failed" });
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-const login = async (req, res) => {
+// ================= LOGIN =================
+const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const user = await User.findOne({ email });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const token = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "24h" });
-    res.json({ 
-      token, 
-      email: user.email, 
-      name: user.name, 
-      role: user.role, 
-      mobile: user.mobile || "", 
-      profileImage: user.profileImage || null, 
-      addresses: user.addresses || [] 
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ message: "Login failed" });
-  }
-};
-
-// Get user profile
-const getUserProfile = async (req, res) => {
-  try {
-    const user = await User.findOne({ email: req.user.email });
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(401).json({ message: "User not found" });
     }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
 
     res.json({
+      token,
       email: user.email,
       name: user.name,
       role: user.role,
-      mobile: user.mobile || "",
-      profileImage: user.profileImage || null,
-      addresses: user.addresses || []
+      mobile: user.mobile,
+      profileImage: user.profileImage || "",
+      addresses: user.addresses,
     });
   } catch (error) {
-    console.error("Error fetching user profile:", error);
-    res.status(500).json({ message: "Failed to fetch profile" });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-const updateUser = async (req, res) => {
+// ================= GET CURRENT USER =================
+const getCurrentUser = async (req, res) => {
   try {
-    const { name, mobile } = req.body;
-    const session = req.user;
-    
-    const update = {};
-    if (name) update.name = name;
-    if (mobile) {
-      const phoneRegex = /^(?:\+94\d{9}|07\d{8})$/;
-      if (!phoneRegex.test(mobile)) {
-        return res.status(400).json({ message: "Invalid mobile number format" });
-      }
-      update.mobile = mobile;
-    }
-
-    const user = await User.findOneAndUpdate(
-      { email: session.email },
-      update,
-      { new: true, runValidators: true }
-    );
-
+    const user = await User.findById(req.user.id).select("-password");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({
-      message: "Profile updated successfully",
-      name: user.name,
-      email: user.email,
-      mobile: user.mobile || "",
-      profileImage: user.profileImage || null,
-      addresses: user.addresses || [],
-    });
+    res.json(user);
   } catch (error) {
-    console.error("Error updating user:", error);
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((err) => err.message).join(', ');
-      return res.status(400).json({ message: messages });
-    }
-    res.status(500).json({ message: "Failed to update profile" });
+    console.error("Get user error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
-const uploadProfileImage = async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-    const imagePath = `/Uploads/${req.file.filename}`;
-    const user = await User.findOneAndUpdate(
-      { email: req.user.email },
-      { profileImage: imagePath },
-      { new: true }
-    );
+// ================= UPDATE USER =================
+const updateUser = async (req, res) => {
+  try {
+    const { name, mobile } = req.body;
+    const user = await User.findById(req.user.id);
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    res.json({ 
-      message: "Profile image uploaded successfully",
-      profileImage: imagePath 
-    });
+    if (name) user.name = name.trim();
+    if (mobile) {
+      if (!/^\+?\d{10,15}$/.test(mobile)) {
+        return res.status(400).json({ message: "Invalid mobile number format" });
+      }
+      user.mobile = mobile.trim();
+    }
+
+    await user.save();
+
+    res.json({ message: "Profile updated successfully", user });
+  } catch (error) {
+    console.error("Update user error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ================= UPLOAD PROFILE IMAGE =================
+const uploadProfileImage = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    // Save buffer to database
+    user.profileImage = req.file.buffer;
+    await user.save();
+
+    res.json({ message: "Profile image uploaded successfully" });
   } catch (error) {
     console.error("Profile image upload error:", error);
     res.status(500).json({ message: "Failed to upload profile image" });
   }
 };
 
+// ================= CHANGE PASSWORD =================
 const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const session = req.user;
-    const user = await User.findOne({ email: session.email });
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Current and new passwords are required" });
     }
 
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
-    if (!isCurrentPasswordValid) {
-      return res.status(401).json({ message: "Invalid current password" });
-    }
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) return res.status(401).json({ message: "Incorrect current password" });
 
     if (newPassword.length < 8) {
       return res.status(400).json({ message: "New password must be at least 8 characters" });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-    await User.findOneAndUpdate(
-      { email: session.email },
-      { password: hashedPassword }
-    );
+    user.password = newPassword;
+    await user.save();
 
     res.json({ message: "Password updated successfully" });
   } catch (error) {
-    console.error("Error changing password:", error);
-    res.status(500).json({ message: "Failed to update password" });
+    console.error("Change password error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
+// ================= ADD ADDRESS =================
 const addAddress = async (req, res) => {
   try {
     const { label, address, lat, lng, isDefault } = req.body;
-    if (!label || !address || lat === undefined || lng === undefined) {
-      return res.status(400).json({ message: "All address fields are required" });
+
+    if (!label || !["home", "work", "favorite", "other"].includes(label)) {
+      return res.status(400).json({ message: "Valid label required (home, work, favorite, other)" });
+    }
+    if (!address || !address.trim()) {
+      return res.status(400).json({ message: "Address is required" });
+    }
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+    if (isNaN(parsedLat) || parsedLat < -90 || parsedLat > 90) {
+      return res.status(400).json({ message: "Latitude must be between -90 and 90" });
+    }
+    if (isNaN(parsedLng) || parsedLng < -180 || parsedLng > 180) {
+      return res.status(400).json({ message: "Longitude must be between -180 and 180" });
     }
 
-    const user = await User.findOne({ email: req.user.email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Initialize addresses array if it doesn't exist
-    if (!user.addresses) {
-      user.addresses = [];
-    }
+    if (!user.addresses) user.addresses = [];
 
-    // If this is the first address or isDefault is true, set as default
-    const shouldSetAsDefault = isDefault || user.addresses.length === 0;
-
-    if (shouldSetAsDefault) {
+    if (isDefault || user.addresses.length === 0) {
       user.addresses.forEach((addr) => (addr.isDefault = false));
     }
 
-    const newAddress = {
-      _id: new mongoose.Types.ObjectId().toString(),
-      label,
-      address,
-      lat: parseFloat(lat),
-      lng: parseFloat(lng),
-      isDefault: shouldSetAsDefault,
-    };
+    const newAddress = { label, address: address.trim(), lat: parsedLat, lng: parsedLng, isDefault: isDefault || user.addresses.length === 0 };
 
     user.addresses.push(newAddress);
     await user.save();
 
-    res.json({
-      message: "Address added successfully",
-      address: newAddress,
-      addresses: user.addresses
-    });
+    res.json({ message: "Address added successfully", addresses: user.addresses });
   } catch (error) {
     console.error("Add address error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
+// ================= DELETE ADDRESS =================
 const deleteAddress = async (req, res) => {
   try {
     const { id } = req.params;
-    const session = req.user;
-    const user = await User.findOne({ email: session.email });
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const deletedAddress = user.addresses.find((addr) => addr._id.toString() === id);
+    user.addresses = user.addresses.filter((addr) => addr._id.toString() !== id);
 
-    const initialLength = user.addresses.length;
-    const deletedAddress = user.addresses.find(addr => addr._id === id);
-    user.addresses = user.addresses.filter((addr) => addr._id !== id);
+    if (!deletedAddress) return res.status(404).json({ message: "Address not found" });
 
-    if (user.addresses.length === initialLength) {
-      return res.status(404).json({ message: "Address not found" });
-    }
-
-    // If deleted address was default and there are remaining addresses, set first one as default
-    if (deletedAddress && deletedAddress.isDefault && user.addresses.length > 0) {
+    if (deletedAddress.isDefault && user.addresses.length > 0) {
       user.addresses[0].isDefault = true;
     }
 
     await user.save();
-
-    res.json({
-      message: "Address deleted successfully",
-      addresses: user.addresses
-    });
+    res.json({ message: "Address deleted successfully", addresses: user.addresses });
   } catch (error) {
-    console.error("Error deleting address:", error);
-    res.status(500).json({ message: "Failed to delete address" });
+    console.error("Delete address error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
+// ================= SET DEFAULT ADDRESS =================
 const setDefaultAddress = async (req, res) => {
   try {
     const { id } = req.params;
-    const session = req.user;
-    const user = await User.findOne({ email: session.email });
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const address = user.addresses.find((addr) => addr._id.toString() === id);
+    if (!address) return res.status(404).json({ message: "Address not found" });
 
-    const addressExists = user.addresses.some((addr) => addr._id === id);
-    if (!addressExists) {
-      return res.status(404).json({ message: "Address not found" });
-    }
-
-    user.addresses = user.addresses.map((addr) => ({
-      ...addr,
-      isDefault: addr._id === id
-    }));
-
+    user.addresses.forEach((addr) => (addr.isDefault = addr._id.toString() === id));
     await user.save();
 
-    res.json({
-      message: "Default address set successfully",
-      addresses: user.addresses
-    });
+    res.json({ message: "Default address set successfully", addresses: user.addresses });
   } catch (error) {
-    console.error("Error setting default address:", error);
-    res.status(500).json({ message: "Failed to set default address" });
+    console.error("Set default address error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
+// ================= EXPORTS =================
 module.exports = {
-  getUserProfile,
+  registerUser,
+  loginUser,
+  getCurrentUser,
   updateUser,
   uploadProfileImage,
   changePassword,
@@ -344,6 +314,4 @@ module.exports = {
   deleteAddress,
   setDefaultAddress,
   upload,
-  register,
-  login,
 };

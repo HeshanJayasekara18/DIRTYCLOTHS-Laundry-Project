@@ -34,67 +34,67 @@ const PackageAddForm = ({ open, handleClose, getAllPackage, addPackage }) => {
         }
     };
 
+    //done
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const packageData = {
-                packageID: uuidv4(),
-                package_name: formData.package_name,
-                package_description: formData.package_description,
-                package_time: formData.package_time,
-                features: formData.features,
-                pricing: {
-                    below_1: formData.pricing.below_1,
-                    between_1And10: formData.pricing.between_1And10,
-                    above_10: formData.pricing.above_10
-                }
-            };
+    e.preventDefault();
 
-            
-            const response = await fetch('http://localhost:5000/api/package', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(packageData) 
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            alert('Package added successfully!');
-            console.log(data);
-            
-            // Reset form after successful submission
-            setFormData({
-                package_name: '',
-                package_description: '',
-                package_time: '',
-                features: '',
-                pricing: {
-                    below_1: '',
-                    between_1And10: '',
-                    above_10: ''
-                }
-            });
-            
-            // Call getAllPackage to refresh the list if provided
-            if (getAllPackage) {
-                getAllPackage();
-            }
-            
-            // Close modal if handleClose is provided
-            if (handleClose) {
-                handleClose();
-            }
-            
-        } catch (error) {
-            console.error('Error submitting form:', error);
-            alert('Error adding package. Please try again.');
+    try {
+        const packageData = {
+        packageID: uuidv4(),
+        package_name: formData.package_name,
+        package_description: formData.package_description,
+        package_time: formData.package_time,
+        features: Array.isArray(formData.features) ? formData.features : [formData.features],
+        pricing: {
+            between_1And10: parseFloat(formData.pricing.between_1And10) || 0,
+            above_10: parseFloat(formData.pricing.above_10) || 0
         }
+        };
+
+    const API_BASE_URL = process.env.REACT_APP_API_BASE; // Railway backend URL
+
+    const response = await fetch(`${API_BASE_URL}/api/package`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(packageData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    alert('Package added successfully!');
+    console.log(data);
+
+    // Reset form
+    setFormData({
+      package_name: '',
+      package_description: '',
+      package_time: '',
+      features: [''],
+      pricing: {
+        below_1: '',
+        between_1And10: '',
+        above_10: ''
+      }
+    });
+
+    // Refresh packages list
+    if (getAllPackage) getAllPackage();
+
+    // Close modal
+    if (handleClose) handleClose();
+
+  } catch (error) {
+    console.error('Error submitting form:', error);
+    alert(error.message || 'Error adding package. Please try again.');
+  }
     };
+
 
     return (
         <form onSubmit={handleSubmit}>

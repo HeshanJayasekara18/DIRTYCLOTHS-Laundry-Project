@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 const AdminTest = () => {
   const [testResult, setTestResult] = useState(null);
@@ -8,7 +9,7 @@ const AdminTest = () => {
   const testAdminUser = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('http://localhost:5000/api/auth/test-admin');
+      const response = await axios.get(`${API_BASE_URL}/api/auth/test-admin`);
       setTestResult(response.data);
     } catch (error) {
       setTestResult({ 
@@ -23,7 +24,7 @@ const AdminTest = () => {
   const testLogin = async () => {
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
         email: 'heshan.system@admin.com',
         password: '12345678'
       });

@@ -2,7 +2,13 @@ const Order = require('../models/Order');
 
 const getAllOrders = async (req, res) => {
     try {
-        const orders = await Order.find();
+        // Get user email from JWT (set by verifyToken middleware)
+        const userEmail = req.user?.email;
+        if (!userEmail) {
+            return res.status(401).json({ message: 'Unauthorized: No user email found' });
+        }
+        // Find orders for this user
+        const orders = await Order.find({ userEmail });
         res.status(200).json(orders);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching orders', error: error.message });
@@ -182,11 +188,30 @@ const getOrdersByCustomer = async (req, res) => {
     }
 }
 
+const getAllOrdersAdmin = async (req, res) => {
+    try {
+        // For admin - get ALL orders (no user filtering)
+        const orders = await Order.find({}).sort({ createdAt: -1 }); // Sort by newest first
+        res.status(200).json({
+            success: true,
+            orders
+        });
+    } catch (error) {
+        console.error('Error fetching all orders:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching orders', 
+            error: error.message 
+        });
+    }
+}
+
 module.exports = {
     getAllOrders,
     getOrder,
     addOrder,
     updateOrder,
     deleteOrder,
-    getOrdersByCustomer
+    getOrdersByCustomer,
+    getAllOrdersAdmin
 };

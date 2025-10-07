@@ -8,7 +8,8 @@ const Register = () => {
     name: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    mobile: "" // <-- Add this
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,10 +36,24 @@ const Register = () => {
     });
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    // Check if any field is empty
+    if (
+      !formData.name.trim() ||
+      !formData.email.trim() ||
+      !formData.password.trim() ||
+      !formData.confirmPassword.trim() ||
+      !formData.mobile.trim() // <-- Add this
+    ) {
+      setError("All fields are required");
+      setLoading(false);
+      return;
+    }
 
     // Check if passwords match
     if (formData.password !== formData.confirmPassword) {
@@ -52,6 +67,7 @@ const Register = () => {
         formData.email,
         formData.password,
         formData.name,
+        formData.mobile, // <-- Add this
         setError,
         navigate
       );
@@ -62,6 +78,7 @@ const Register = () => {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
@@ -218,6 +235,20 @@ const Register = () => {
                     </svg>
                   )}
                 </button>
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+              </div>
+
+              <div className="relative group">
+                <input
+                  type="text"
+                  name="mobile"
+                  placeholder="Mobile Number"
+                  value={formData.mobile}
+                  onChange={handleChange}
+                  className="w-full p-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl text-white placeholder-white/60 focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 outline-none transition-all duration-300 group-hover:border-white/30"
+                  required
+                  disabled={loading}
+                />
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
               </div>
 

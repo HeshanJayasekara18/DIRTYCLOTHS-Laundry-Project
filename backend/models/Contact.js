@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const contactSchema = new mongoose.Schema({
     contactID: {
     type: String,
-    default: () => 'contact_${Date.now()}',
+    default: () => `contact_${Date.now()}`,
     unique: true
   },
     email: {

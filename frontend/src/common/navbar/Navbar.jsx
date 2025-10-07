@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import logo from '../../images/DIRTYCLOTHS.png';
 import { UserModel } from "../../reg/UserModel";
+import NavbarProfileImage from "./NavbarProfileimage";
 
 // Navigation items - defined outside component to avoid recreation on each render
 const navigationItems = [
@@ -107,11 +108,7 @@ export default function Navbar() {
                   className="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 >
-                  <img
-                    className="h-8 w-8 md:h-10 md:w-10 rounded-full object-cover border-2 border-gray-200 hover:border-blue-400 transition-colors duration-300"
-                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                    alt="User profile"
-                  />
+                  <NavbarProfileImage/>
                 </button>
                 {/* Profile dropdown menu */}
                 {profileDropdownOpen && (

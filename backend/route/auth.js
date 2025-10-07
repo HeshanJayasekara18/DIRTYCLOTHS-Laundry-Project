@@ -1,9 +1,9 @@
 const express = require("express");
-const bcrypt = require('bcrypt');
-const User = require('../models/User');
+const bcrypt = require("bcryptjs"); // use bcryptjs for consistency
+const User = require("../models/User");
 const router = express.Router();
 const {
-  getUserProfile,
+  getCurrentUser,
   updateUser,
   uploadProfileImage,
   changePassword,
@@ -11,101 +11,104 @@ const {
   deleteAddress,
   setDefaultAddress,
   upload,
-  register,
-  login,
 } = require("../controller/UserController");
+const {
+  registerUser,
+  loginUser,
+} = require("../controller/authController");
 const { verifyToken } = require("../middleware/authMiddleware");
 
-// Registration route
-router.post("/register", register);
+// ------------------------ AUTH ROUTES ------------------------
 
-// Login route
-router.post("/login", login);
+// Registration
+router.post("/register", registerUser);
 
-// Protected user profile routes
-router.get("/user", verifyToken, getUserProfile); // Get user data
+// Login
+router.post("/login", loginUser);
+
+// ------------------------ USER PROFILE ROUTES (Protected) ------------------------
+router.get("/user", verifyToken, getCurrentUser); // Get user data
 router.put("/user", verifyToken, updateUser); // Update user profile (name, mobile)
 router.post("/user/profile-image", verifyToken, upload.single("profileImage"), uploadProfileImage); // Upload profile image
 router.put("/change-password", verifyToken, changePassword); // Change password
+
+// ------------------------ USER ADDRESS ROUTES (Protected) ------------------------
 router.post("/user/addresses", verifyToken, addAddress); // Add address
 router.delete("/user/addresses/:id", verifyToken, deleteAddress); // Delete address
 router.put("/user/addresses/:id/default", verifyToken, setDefaultAddress); // Set default address
 
-// Debug route - Add to your auth routes for debugging
-router.get('/debug-user/:email', async (req, res) => {
+// ------------------------ DEBUG ROUTE ------------------------
+router.get("/debug-user/:email", async (req, res) => {
   try {
     const user = await User.findOne({ email: req.params.email });
-    res.json(user ? {
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      addresses: user.addresses || []
-    } : { message: 'User not found' });
+    res.json(
+      user
+        ? {
+            email: user.email,
+            role: user.role,
+            name: user.name,
+            addresses: user.addresses || [],
+          }
+        : { message: "User not found" }
+    );
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Route to create admin user - REMOVE IN PRODUCTION
-router.post('/create-admin', async (req, res) => {
+// ------------------------ CREATE OR UPDATE ADMIN ROUTE ------------------------
+router.post("/create-admin", verifyToken, async (req, res) => {
   try {
-    const adminEmail = 'heshan.system@admin.com';
-    const adminPassword = '12345678';
-    const adminName = 'Admin User';
+   
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not allowed to create admin" });
+    }
 
-    // Check if admin user already exists
-    const existingAdmin = await User.findOne({ email: adminEmail });
-    
-    if (existingAdmin) {
-      // Update role if it's not admin
-      if (existingAdmin.role !== 'admin') {
-        existingAdmin.role = 'admin';
-        await existingAdmin.save();
-        return res.json({
-          message: 'Updated existing user role to admin',
-          admin: {
-            email: existingAdmin.email,
-            name: existingAdmin.name,
-            role: existingAdmin.role
-          }
-        });
-      }
-      
+    const { email, password, name, mobile } = req.body;
+    if (!email || !password || !name) {
+      return res
+        .status(400)
+        .json({ message: "Email, name, and password are required" });
+    }
+
+    let admin = await User.findOne({ email: email.toLowerCase() });
+
+    if (!admin) {
+      // Create new admin
+      const hashedPassword = await bcrypt.hash(password, 10);
+      admin = new User({
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        name,
+        role: "admin",
+        mobile: mobile || "",
+        addresses: [],
+      });
+      await admin.save();
       return res.json({
-        message: 'Admin user already exists',
-        admin: {
-          email: existingAdmin.email,
-          name: existingAdmin.name,
-          role: existingAdmin.role
-        }
+        message: "Admin user created successfully",
+        admin: { email: admin.email, name: admin.name, role: admin.role },
       });
     }
 
-    // Create new admin user
-    const hashedPassword = await bcrypt.hash(adminPassword, 10);
-    
-    const adminUser = new User({
-      email: adminEmail,
-      password: hashedPassword,
-      name: adminName,
-      role: 'admin',
-      addresses: []
-    });
+    // Update existing user to admin and hash password
+    admin.password = await bcrypt.hash(password, 10);
+    admin.role = "admin";
+    if (name) admin.name = name;
+    if (mobile) admin.mobile = mobile;
+    await admin.save();
 
-    await adminUser.save();
-    
     res.json({
-      message: 'Admin user created successfully!',
-      admin: {
-        email: adminUser.email,
-        name: adminUser.name,
-        role: adminUser.role
-      }
+      message: "Admin user updated successfully",
+      admin: { email: admin.email, name: admin.name, role: admin.role },
     });
-  } catch (error) {
-    console.error('Error creating admin user:', error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("Create admin error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
+
+
+
 
 module.exports = router;
