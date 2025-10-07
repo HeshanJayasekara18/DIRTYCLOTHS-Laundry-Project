@@ -99,7 +99,7 @@ const UserProfile = () => {
       console.error("API call error:", err);
       throw err;
     }
-  }, [API_BASE_URL, navigate]);
+  }, [navigate]); // API_BASE_URL is a constant
 
   // ✅ Memoized fetchUserProfile
   const fetchUserProfile = useCallback(async () => {

@@ -38,7 +38,7 @@ const AdminOrder = () => {
     } finally {
       setLoading(false);
     }
-  }, [API_BASE_URL]);
+  }, []); // API_BASE_URL is a constant
 
   useEffect(() => {
     fetchOrders();

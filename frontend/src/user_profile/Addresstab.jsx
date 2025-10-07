@@ -85,7 +85,7 @@ const Addresstab = ({ user, setUser, error, setError, success, setSuccess }) => 
       console.error('API call error:', error);
       throw error;
     }
-  }, [API_BASE_URL, navigate]);
+  }, [navigate]); // API_BASE_URL is a constant
 
   // Add address
   const addAddress = async () => {

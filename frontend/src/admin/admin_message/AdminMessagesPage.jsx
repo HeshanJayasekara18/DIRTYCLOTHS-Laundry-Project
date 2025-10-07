@@ -70,7 +70,7 @@ const AdminMessagesPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [API_BASE_URL]);
+  }, []); // API_BASE_URL is a constant, doesn't need to be in dependencies
 
   // Update message status
   const updateMessageStatus = async (contactID, newStatus) => {
