@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../../config';
 
 export default function ServiceSection2({ onOrderNow }) {
   const [packages, setPackages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Icon mapping
@@ -108,7 +109,7 @@ export default function ServiceSection2({ onOrderNow }) {
       console.error('Error fetching packages:', err);
       setError('Failed to load packages. Please try again later.');
     } finally {
-      // Loading complete
+      setLoading(false);
     }
   }, []); // API_BASE_URL is a constant
 
