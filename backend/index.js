@@ -25,7 +25,8 @@ connectDB();
 // CORS setup for multiple origins
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://dirtyclothslaundry.netlify.app"
+  "https://dirtyclothslaundry.netlify.app",
+  "https://dirtycloths-laundry-project-production.up.railway.app"
 ];
 
 app.use(cors({
